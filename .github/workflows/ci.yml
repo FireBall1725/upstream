@@ -1,0 +1,26 @@
+name: CI
+
+# The jobs live in FireBall1725/workflows so every repo runs the same ones.
+# Change them there, not here.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  go:
+    uses: FireBall1725/workflows/.github/workflows/ci-go.yml@ci-node-working-directory
+
+  web:
+    uses: FireBall1725/workflows/.github/workflows/ci-node.yml@ci-node-working-directory
+    with:
+      working-directory: web
+      # Same major as the Dockerfile's web stage.
+      node-version: "24"
+      # The go job already builds the same Dockerfile.
+      docker-build: false

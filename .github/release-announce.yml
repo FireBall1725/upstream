@@ -1,0 +1,36 @@
+# Read by the shared release workflow when it posts to Discord.
+#
+# Available placeholders in getting_started and link urls:
+#   {{version}}  26.9.1            {{tag}}      v26.9.1
+#   {{channel}}  stable | rc       {{repo}}     FireBall1725/upstream
+#   {{image}}    ghcr.io/fireball1725/upstream:26.9.1
+#   {{compare_url}}  the GitHub compare link against the previous release
+
+project:
+  name: Upstream
+  footer: "Upstream · update tracker for GitOps repos"
+
+channels:
+  stable:
+    announce: true
+    colour: "0x0F6B5A"
+    prefix: ""
+  rc:
+    announce: true
+    colour: "0xF1C40F"
+    prefix: "Release candidate: "
+  nightly:
+    announce: false
+
+getting_started: |
+  ```
+  docker pull {{image}}
+  ```
+
+links:
+  - name: Source
+    url: https://github.com/{{repo}}
+  - name: Image
+    url: https://github.com/{{repo}}/pkgs/container/upstream
+  - name: Changes
+    url: "{{compare_url}}"

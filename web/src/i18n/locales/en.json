@@ -1,0 +1,13 @@
+{
+  "app": {
+    "name": "Upstream",
+    "version": "Version {{version}}"
+  },
+  "status": {
+    "loading": "Loading…",
+    "unreachable": "Couldn't reach the Upstream server: {{error}}",
+    "setupTitle": "Setup isn't finished",
+    "noScans": "No scans yet.",
+    "schedule": "Schedule {{schedule}}"
+  }
+}

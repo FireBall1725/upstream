@@ -1,0 +1,67 @@
+/* SPDX-License-Identifier: AGPL-3.0-only */
+/* Copyright (C) 2026 FireBall1725 */
+
+@import 'tailwindcss';
+
+/* Colours come from the mockup; semantic update colours are separate from the spruce accent. */
+@theme {
+  --font-sans: 'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-cond: 'IBM Plex Sans Condensed', 'IBM Plex Sans', system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  --color-ground: #f3f5f4;
+  --color-surface: #ffffff;
+  --color-sunk: #e9edeb;
+  --color-ink: #14201b;
+  --color-muted: #5b6964;
+  --color-line: #d5dcd9;
+  --color-accent: #0f6b5a;
+  --color-accent-ink: #ffffff;
+  --color-accent-soft: #dceee9;
+  --color-major: #b4372a;
+  --color-major-bg: #f8e3df;
+  --color-minor: #8f5d00;
+  --color-minor-bg: #f7ecd4;
+  --color-patch: #2e7045;
+  --color-patch-bg: #ddefe2;
+  --color-rebuild: #4f579a;
+  --color-rebuild-bg: #e4e6f5;
+  --color-current: #5f6b67;
+  --color-current-bg: #e9edeb;
+  --color-unchecked: #6e5a7e;
+  --color-unchecked-bg: #efe9f3;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-ground: #0e1412;
+    --color-surface: #151d1a;
+    --color-sunk: #1b2521;
+    --color-ink: #e2eae6;
+    --color-muted: #93a39d;
+    --color-line: #283430;
+    --color-accent: #4fbfa4;
+    --color-accent-ink: #06120e;
+    --color-accent-soft: #16332b;
+    --color-major: #f0806f;
+    --color-major-bg: #3a1c18;
+    --color-minor: #e6b35a;
+    --color-minor-bg: #33280f;
+    --color-patch: #6fcb8c;
+    --color-patch-bg: #16301f;
+    --color-rebuild: #a3aae8;
+    --color-rebuild-bg: #22254a;
+    --color-current: #8c9a95;
+    --color-current-bg: #1b2521;
+    --color-unchecked: #c3a8d6;
+    --color-unchecked-bg: #2a2133;
+  }
+}
+
+body {
+  background: var(--color-ground);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 1.45;
+}

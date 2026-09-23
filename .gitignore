@@ -1,0 +1,25 @@
+# Go build output
+/upstream
+*.test
+*.out
+
+# Vite output is embedded at build time; only the placeholder is tracked.
+/internal/ui/dist/*
+!/internal/ui/dist/.gitkeep
+
+# Web
+/web/node_modules/
+/web/*.tsbuildinfo
+
+# Local state: SQLite database, repo clone, bump worktrees
+/data/
+
+# Local env overrides
+.env
+.env.local
+
+# IDE and OS
+.vscode/
+.idea/
+*.swp
+.DS_Store
