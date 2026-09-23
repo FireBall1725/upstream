@@ -4,13 +4,11 @@
 package bump
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
 	"log/slog"
 	"os"
-	"os/exec"
 	"path"
 	"path/filepath"
 	"regexp"
@@ -19,6 +17,7 @@ import (
 	"time"
 
 	"github.com/fireball1725/upstream/internal/config"
+	"github.com/fireball1725/upstream/internal/helm"
 	"github.com/fireball1725/upstream/internal/inventory"
 	"github.com/fireball1725/upstream/internal/models"
 	"github.com/fireball1725/upstream/internal/repository"
@@ -505,17 +504,5 @@ func (s *Service) verify(ctx context.Context, dir string, items []models.BumpIte
 }
 
 func (s *Service) helm(ctx context.Context, dir string, args ...string) (string, error) {
-	cmd := exec.CommandContext(ctx, "helm", args...)
-	cmd.Dir = dir
-	home := filepath.Join(s.cfg.DataDir, "helm")
-	cmd.Env = append(os.Environ(),
-		"HELM_CACHE_HOME="+filepath.Join(home, "cache"),
-		"HELM_CONFIG_HOME="+filepath.Join(home, "config"),
-		"HELM_DATA_HOME="+filepath.Join(home, "data"))
-	var stdout, stderr bytes.Buffer
-	cmd.Stdout, cmd.Stderr = &stdout, &stderr
-	if err := cmd.Run(); err != nil {
-		return "", fmt.Errorf("helm %s: %w: %s", args[0], err, strings.TrimSpace(stderr.String()))
-	}
-	return stdout.String(), nil
+	return helm.Run(ctx, s.cfg.DataDir, dir, args...)
 }

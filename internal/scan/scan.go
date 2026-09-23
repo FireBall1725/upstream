@@ -21,8 +21,10 @@ import (
 	"time"
 
 	"github.com/fireball1725/upstream/internal/config"
+	"github.com/fireball1725/upstream/internal/helm"
 	"github.com/fireball1725/upstream/internal/inventory"
 	"github.com/fireball1725/upstream/internal/models"
+	"github.com/fireball1725/upstream/internal/render"
 	"github.com/fireball1725/upstream/internal/repository"
 	"github.com/fireball1725/upstream/internal/sources"
 	"github.com/fireball1725/upstream/internal/version"
@@ -207,9 +209,46 @@ func (s *Service) scan(ctx context.Context) (commit, date string, apps []invento
 		return "", "", nil, err
 	}
 	if !s.skipLookups {
+		s.renderChecks(ctx, dir, apps)
 		checkApps(ctx, sources.New("upstream/"+version.String()), apps, skipIndex(skips))
 	}
 	return commit, date, apps, nil
+}
+
+// renders caps concurrent helm template runs; each is a process and some charts are large.
+const renders = 4
+
+// renderChecks renders every app and adds the findings that only show in the rendered
+// manifests. A render that fails costs that app the check, never the scan.
+func (s *Service) renderChecks(ctx context.Context, dir string, apps []inventory.App) {
+	haveHelm := helm.Available()
+	sem := make(chan struct{}, renders)
+	var wg sync.WaitGroup
+	for i := range apps {
+		if _, err := os.Stat(filepath.Join(dir, filepath.FromSlash(apps[i].Dir), "Chart.yaml")); err == nil && !haveHelm {
+			continue
+		}
+		wg.Add(1)
+		go func(a *inventory.App) {
+			defer wg.Done()
+			sem <- struct{}{}
+			defer func() { <-sem }()
+			actx, cancel := context.WithTimeout(ctx, time.Minute)
+			defer cancel()
+			out, err := render.Manifests(actx, s.cfg.DataDir, dir, *a)
+			if err != nil {
+				slog.Debug("render", "app", a.Dir, "error", err)
+				return
+			}
+			found, err := render.RWORolling(out)
+			if err != nil {
+				slog.Debug("render check", "app", a.Dir, "error", err)
+				return
+			}
+			a.Findings = append(a.Findings, found...)
+		}(&apps[i])
+	}
+	wg.Wait()
 }
 
 // RepoDir is the shared clone of the GitOps repo.
