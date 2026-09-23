@@ -66,8 +66,10 @@ func (s *Service) Ready() error {
 	return nil
 }
 
-// Run works the queue until ctx ends. Anything left queued or running from before a restart fails first.
+// Run works the queue until ctx ends. Anything left queued or running from before a restart fails
+// first, and work clones a crash left behind are removed.
 func (s *Service) Run(ctx context.Context) {
+	_ = os.RemoveAll(filepath.Join(s.cfg.DataDir, "work"))
 	if prs, err := s.repo.ListPRs(ctx, 200); err == nil {
 		for _, p := range prs {
 			if p.State == models.PRQueued || p.State == models.PRRunning {
@@ -99,7 +101,10 @@ func (s *Service) Create(ctx context.Context, req Request) (models.PullRequest, 
 	if title == "" {
 		title = defaultTitle(items)
 	}
+	now := s.now()
 	pr := models.PullRequest{
+		CreatedAt: now,
+		UpdatedAt: now,
 		Title:     title,
 		Branch:    s.branchName(items),
 		State:     models.PRQueued,

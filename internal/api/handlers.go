@@ -144,6 +144,7 @@ func (h *handlers) addSkip(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+	s.CreatedAt = time.Now()
 	if err := h.repo.AddSkip(r.Context(), s); err != nil {
 		writeError(w, http.StatusInternalServerError, err)
 		return
