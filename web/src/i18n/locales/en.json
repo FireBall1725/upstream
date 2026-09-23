@@ -1,5 +1,7 @@
 {
-  "app": { "name": "Upstream" },
+  "app": {
+    "name": "Upstream"
+  },
   "later": "later",
   "top": {
     "last": "Last scan",
@@ -67,7 +69,9 @@
     "nothingPinned": "Nothing pinned",
     "none": "none",
     "morePins_one": "+{{count}} more",
-    "morePins_other": "+{{count}} more"
+    "morePins_other": "+{{count}} more",
+    "prOpen": "PR #{{number}}",
+    "prPending": "PR pending"
   },
   "detail": {
     "label": "App detail",
@@ -88,8 +92,11 @@
     "actions": "Actions",
     "addToPR": "Add to PR",
     "inPR": "In the PR",
-    "skip": "Skip this version",
-    "editRule": "Edit tag rule"
+    "editRule": "Edit tag rule",
+    "skip": "Skip {{version}}",
+    "skipped": "Skipped",
+    "unskip": "Undo",
+    "prs": "Pull requests"
   },
   "pr": {
     "one": "New pull request",
@@ -112,10 +119,18 @@
     "open": "Open PR",
     "openMany": "Open {{count}} PRs",
     "clear": "Clear",
-    "notYet": "Opening PRs is the next thing being built. The preview shows exactly what they'll contain."
+    "sending": "Opening…",
+    "notReady": "Opening PRs needs GITHUB_TOKEN, a commit author and a github.com repo. The setup banner says which is missing."
   },
-  "hygiene": { "clean": "No hygiene findings." },
-  "severity": { "fix": "Fix", "tidy": "Tidy", "note": "Note", "info": "Info" },
+  "hygiene": {
+    "clean": "No hygiene findings."
+  },
+  "severity": {
+    "fix": "Fix",
+    "tidy": "Tidy",
+    "note": "Note",
+    "info": "Info"
+  },
   "check": {
     "floating-tag": {
       "title": "Floating tags",
@@ -175,6 +190,28 @@
     "took": "Took",
     "failed": "Failed",
     "noneYet": "No scans yet.",
-    "memoryOnly": "History is kept in memory and starts over when the pod restarts."
+    "prs": "Pull requests",
+    "kept": "The last 50 scans are kept."
+  },
+  "prState": {
+    "queued": "Queued",
+    "running": "Making",
+    "open": "Open",
+    "merged": "Merged",
+    "closed": "Closed",
+    "failed": "Failed"
+  },
+  "prlog": {
+    "none": "No PRs yet.",
+    "bumps_one": "{{count}} bump",
+    "bumps_other": "{{count}} bumps",
+    "autoMerge": "auto-merge"
+  },
+  "sent": {
+    "label": "Pull requests",
+    "title_one": "Pull request",
+    "title_other": "{{count}} pull requests",
+    "working": "Cloning, editing, checking and pushing. This takes a few seconds per PR.",
+    "done": "Done. Merged PRs trigger a rescan."
   }
 }

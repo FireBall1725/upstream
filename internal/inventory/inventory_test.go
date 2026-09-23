@@ -208,10 +208,10 @@ func TestScan(t *testing.T) {
 		if len(a.Pins) != 2 {
 			t.Fatalf("pins %+v", a.Pins)
 		}
-		if p := a.Pins[0]; p.Image != "docker.io/golift/unifi-poller" || p.Version != "v2.11.2" || p.Line != 6 || p.File != "apps/app-unpoller/unpoller/deployment.yaml" {
+		if p := a.Pins[0]; p.Image != "docker.io/golift/unifi-poller" || p.Version != "v2.11.2" || p.Line != 6 || p.File != "apps/app-unpoller/unpoller/deployment.yaml" || p.Field != "deployment.yaml image" {
 			t.Errorf("pin %+v", p)
 		}
-		if p := a.Pins[1]; p.Image != "registry.local:5000/tools/side" || p.Version != "1.0" {
+		if p := a.Pins[1]; p.Image != "registry.local:5000/tools/side" || p.Version != "1.0" || p.Field != "deployment.yaml image[2]" {
 			t.Errorf("port pin %+v", p)
 		}
 	})

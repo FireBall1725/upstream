@@ -4,7 +4,11 @@ Upstream watches a GitOps repo and tells you which of your apps are behind. It r
 
 It's one Go binary with the web UI built in. Run one container with a small volume and it scans on a cron schedule.
 
-**Status:** early. It scans the repo on a schedule or on demand, checks every pinned image and chart against its registry or Helm repo, and lists the updates and the repo hygiene problems it finds. You can pick updates and preview the PR; opening it is next. [docs/plan.md](docs/plan.md) has the order and the design.
+It scans on a schedule or on demand, checks every pinned image and chart against its registry or Helm repo, lists the updates and the repo hygiene problems it finds, and opens the bump PRs you pick. [docs/plan.md](docs/plan.md) has the design.
+
+## What a bump PR does
+
+Each PR gets its own fresh clone. An image bump rewrites the tag line (quoted), keeps `appVersion` in step and adds one to the chart's own patch version. A chart bump rewrites the dependency's version and runs `helm dependency update`, so `Chart.lock` and the vendored `charts/*.tgz` match. Then Upstream re-reads the clone and refuses to push if a picked pin doesn't read its new version, anything else moved, a file outside the picked apps changed, or a touched chart no longer renders with `helm template`. Majors get their own PR unless you untick that, and auto-merge is off unless you tick it.
 
 ## Running it
 
@@ -24,13 +28,15 @@ docker run -p 8080:8080 -v upstream-data:/data \
 | `GITHUB_TOKEN` | none | Reads release notes and opens bump PRs |
 | `UPSTREAM_GIT_AUTHOR_NAME` | none | Author of bump commits |
 | `UPSTREAM_GIT_AUTHOR_EMAIL` | none | Author email of bump commits |
-| `UPSTREAM_DATA_DIR` | `/data` in the image | SQLite database and the repo clone |
+| `UPSTREAM_DATA_DIR` | `/data` in the image | SQLite database, the repo clone, and work clones for PRs |
 | `UPSTREAM_ADDR` | `:8080` | Listen address |
 | `LOG_LEVEL` | `info` | `debug`, `info`, `warn` or `error` |
 
 For bump PRs, use a fine-grained token scoped to the GitOps repo only, with Contents and Pull requests set to read and write.
 
 There's no login. Put it behind an internal-only ingress or a VPN.
+
+`/metrics` serves Prometheus gauges: `upstream_pins{update=...}`, `upstream_hygiene_findings{severity=...}`, `upstream_open_prs`, `upstream_last_scan_success` and `upstream_last_scan_timestamp_seconds`.
 
 ## Developing
 

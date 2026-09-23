@@ -5,24 +5,33 @@ import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppDetail from './components/AppDetail'
 import HygieneTab from './components/HygieneTab'
-import PRPreview from './components/PRPreview'
+import PRLog from './components/PRLog'
+import PRPreview, { type PRGroup } from './components/PRPreview'
 import ScansTab from './components/ScansTab'
 import Summary from './components/Summary'
 import TopBar from './components/TopBar'
 import UpdatesTable from './components/UpdatesTable'
+import { usePRs } from './hooks/usePRs'
 import { useScan } from './hooks/useScan'
-import { getJSON, type Status } from './lib/api'
+import { getJSON, prBusy, send, type Pin, type PullRequest, type Skip, type Status } from './lib/api'
 import { BUMPS, canBump, hygieneGroups, rank, toRow, type Bump, type Row } from './lib/model'
 
 type Tab = 'updates' | 'hygiene' | 'scans'
 type Filter = 'updates' | 'all' | Bump
-type View = { kind: 'none' } | { kind: 'app'; key: string } | { kind: 'pr' }
+type View = { kind: 'none' } | { kind: 'app'; key: string } | { kind: 'pr' } | { kind: 'sent'; ids: number[] }
 
 export default function App() {
   const { t } = useTranslation()
   const [status, setStatus] = useState<Status | null>(null)
   const [statusError, setStatusError] = useState<string | null>(null)
-  const { scan, error: scanError, start } = useScan()
+  const { scan, error: scanError, start, reload: reloadScan } = useScan()
+  const [statusTick, setStatusTick] = useState(0)
+  const { prs, reload: reloadPRs } = usePRs(() => {
+    void reloadScan()
+    setStatusTick((n) => n + 1)
+  })
+  const [skips, setSkips] = useState<Skip[]>([])
+  const [actionError, setActionError] = useState<string | null>(null)
 
   const [tab, setTab] = useState<Tab>('updates')
   const [filter, setFilter] = useState<Filter>('updates')
@@ -40,7 +49,18 @@ export default function App() {
         if (!ctrl.signal.aborted) setStatusError(e instanceof Error ? e.message : String(e))
       })
     return () => ctrl.abort()
-  }, [scan?.history.length])
+  }, [scan?.history.length, statusTick])
+
+  const loadSkips = async () => {
+    try {
+      setSkips(await getJSON<Skip[]>('/api/skips'))
+    } catch {
+      // Skips only decorate the side panel; the next change reloads them.
+    }
+  }
+  useEffect(() => {
+    void loadSkips()
+  }, [])
 
   const rows = useMemo(() => (scan?.apps ?? []).map(toRow), [scan])
   const byKey = useMemo(() => new Map(rows.map((r) => [r.key, r])), [rows])
@@ -80,9 +100,51 @@ export default function App() {
     setView({ kind: 'none' })
   }
 
+  const openPR = useMemo(() => {
+    const m = new Map<string, { number?: number; url?: string }>()
+    for (const p of prs) {
+      if (p.state !== 'open' && !prBusy(p)) continue
+      for (const it of p.items) if (!m.has(it.appDir)) m.set(it.appDir, { number: p.number, url: p.url })
+    }
+    return m
+  }, [prs])
+
+  const openPRs = async (groups: PRGroup[], autoMerge: boolean) => {
+    const made: PullRequest[] = []
+    for (const g of groups) {
+      const pr = await send<PullRequest>('POST', '/api/prs', { title: g.title, autoMerge, apps: g.apps })
+      if (pr) made.push(pr)
+    }
+    await reloadPRs()
+    setPicked(new Set())
+    setView({ kind: 'sent', ids: made.map((p) => p.id) })
+  }
+
+  const skip = async (appDir: string, pin: Pin) => {
+    setActionError(null)
+    try {
+      await send('POST', '/api/skips', { appDir, field: pin.field, version: pin.latest })
+      await loadSkips()
+      await reloadScan()
+    } catch (e) {
+      setActionError(e instanceof Error ? e.message : String(e))
+    }
+  }
+  const unskip = async (s: Skip) => {
+    setActionError(null)
+    try {
+      await send('DELETE', '/api/skips', s)
+      await loadSkips()
+      await reloadScan()
+    } catch (e) {
+      setActionError(e instanceof Error ? e.message : String(e))
+    }
+  }
+
   const drawerRow = view.kind === 'app' ? byKey.get(view.key) : undefined
   const showPR = view.kind === 'pr' && pickedRows.length > 0
-  const drawerOpen = !!drawerRow || showPR
+  const sent = view.kind === 'sent' ? prs.filter((p) => view.ids.includes(p.id)) : []
+  const drawerOpen = !!drawerRow || showPR || view.kind === 'sent'
   const onlyNs = ns || (shown.length > 0 && shown.every((r) => r.app.namespace === shown[0].app.namespace) ? shown[0].app.namespace : '')
 
   const filters: { k: Filter; label: string; n: number }[] = [
@@ -109,6 +171,11 @@ export default function App() {
             ))}
           </ul>
         </section>
+      )}
+      {actionError && (
+        <div role="alert" className="banner bad">
+          {actionError}
+        </div>
       )}
       {scan?.state === 'failed' && (
         <div role="alert" className="banner bad">
@@ -192,6 +259,7 @@ export default function App() {
 
                 <UpdatesTable
                   rows={shown}
+                  openPR={openPR}
                   picked={picked}
                   highlighted={(r) => (view.kind === 'app' ? view.key === r.key : showPR && picked.has(r.key))}
                   onOpen={(key) => setView({ kind: 'app', key })}
@@ -201,22 +269,43 @@ export default function App() {
               </div>
 
               {drawerOpen && (
-                <aside className="drawer" aria-label={showPR ? t('pr.one') : t('detail.label')}>
-                  {showPR ? (
+                <aside className="drawer" aria-label={view.kind === 'sent' ? t('sent.label') : showPR ? t('pr.one') : t('detail.label')}>
+                  {view.kind === 'sent' ? (
+                    <>
+                      <div className="dh">
+                        <div>
+                          <h2>{t('sent.title', { count: sent.length })}</h2>
+                          <span className="ns">{sent.some(prBusy) ? t('sent.working') : t('sent.done')}</span>
+                        </div>
+                        <button className="close" type="button" aria-label={t('detail.close')} onClick={() => setView({ kind: 'none' })}>
+                          ×
+                        </button>
+                      </div>
+                      <div className="dsec">
+                        <PRLog prs={sent} />
+                      </div>
+                    </>
+                  ) : showPR ? (
                     <PRPreview
                       rows={pickedRows}
                       splitMajors={splitMajors}
+                      ready={!!status?.prsReady}
                       onSplitMajors={setSplitMajors}
                       onRemove={(key) => pickSet([key], false)}
                       onClear={clear}
+                      onOpen={openPRs}
                     />
                   ) : (
                     drawerRow && (
                       <AppDetail
                         row={drawerRow}
                         inPR={picked.has(drawerRow.key)}
+                        skips={skips}
+                        prs={prs}
                         onAdd={() => pickSet([drawerRow.key], true)}
                         onClose={() => setView(pickedRows.length > 0 ? { kind: 'pr' } : { kind: 'none' })}
+                        onSkip={(pin) => void skip(drawerRow.app.dir, pin)}
+                        onUnskip={(s) => void unskip(s)}
                       />
                     )
                   )}
@@ -225,7 +314,7 @@ export default function App() {
             </section>
           )}
           {tab === 'hygiene' && <HygieneTab apps={scan?.apps ?? []} />}
-          {tab === 'scans' && <ScansTab status={status} scan={scan} />}
+          {tab === 'scans' && <ScansTab status={status} scan={scan} prs={prs} />}
         </>
       )}
     </div>

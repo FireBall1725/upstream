@@ -2,18 +2,31 @@
 // Copyright (C) 2026 FireBall1725
 
 import { useTranslation } from 'react-i18next'
-import type { Pin } from '../lib/api'
-import { canBump, channelOf, type Row } from '../lib/model'
+import type { Pin, PullRequest, Skip } from '../lib/api'
+import { canBump, channelOf, UPDATABLE, type Bump, type Row } from '../lib/model'
 import BumpPill from './BumpPill'
+import { PRStatePill } from './PRLog'
 
 interface Props {
   row: Row
   inPR: boolean
+  skips: Skip[]
+  prs: PullRequest[]
   onAdd: () => void
   onClose: () => void
+  onSkip: (pin: Pin) => void
+  onUnskip: (skip: Skip) => void
 }
 
-function PinBlock({ pin, dir }: { pin: Pin; dir: string }) {
+interface PinProps {
+  pin: Pin
+  dir: string
+  skipped: Skip[]
+  onSkip: (pin: Pin) => void
+  onUnskip: (skip: Skip) => void
+}
+
+function PinBlock({ pin, dir, skipped, onSkip, onUnskip }: PinProps) {
   const { t } = useTranslation()
   const newer = pin.latest && pin.latest !== pin.version
   const checked = pin.update !== 'unchecked' && pin.update !== 'error'
@@ -63,14 +76,37 @@ function PinBlock({ pin, dir }: { pin: Pin; dir: string }) {
         </dd>
         <dt>{t('detail.channel')}</dt>
         <dd>{channelOf(pin.version)}</dd>
+        {skipped.length > 0 && (
+          <>
+            <dt>{t('detail.skipped')}</dt>
+            <dd>
+              {skipped.map((s) => (
+                <span key={s.version} style={{ marginRight: 8 }}>
+                  <span className="v">{s.version}</span>{' '}
+                  <button className="linkbtn" type="button" onClick={() => onUnskip(s)}>
+                    {t('detail.unskip')}
+                  </button>
+                </span>
+              ))}
+            </dd>
+          </>
+        )}
       </dl>
+      {newer && UPDATABLE.includes(pin.update as Bump) && (
+        <div className="actions" style={{ marginTop: 10 }}>
+          <button className="btn ghost" type="button" onClick={() => onSkip(pin)}>
+            {t('detail.skip', { version: pin.latest })}
+          </button>
+        </div>
+      )}
     </div>
   )
 }
 
-export default function AppDetail({ row, inPR, onAdd, onClose }: Props) {
+export default function AppDetail({ row, inPR, skips, prs, onAdd, onClose, onSkip, onUnskip }: Props) {
   const { t } = useTranslation()
   const { app } = row
+  const mine = prs.filter((p) => p.items.some((it) => it.appDir === app.dir)).slice(0, 5)
   return (
     <>
       <div className="dh">
@@ -87,7 +123,14 @@ export default function AppDetail({ row, inPR, onAdd, onClose }: Props) {
         <h3>{t('detail.pins', { count: app.pins.length })}</h3>
         {app.pins.length === 0 && <div className="callout">{t('detail.nothingPinned')}</div>}
         {app.pins.map((p) => (
-          <PinBlock key={`${p.file}:${p.line}`} pin={p} dir={app.dir} />
+          <PinBlock
+            key={`${p.file}:${p.line}`}
+            pin={p}
+            dir={app.dir}
+            skipped={skips.filter((s) => s.appDir === app.dir && s.field === p.field)}
+            onSkip={onSkip}
+            onUnskip={onUnskip}
+          />
         ))}
       </div>
       {app.findings.length > 0 && (
@@ -102,6 +145,25 @@ export default function AppDetail({ row, inPR, onAdd, onClose }: Props) {
           </ul>
         </div>
       )}
+      {mine.length > 0 && (
+        <div className="dsec">
+          <h3>{t('detail.prs')}</h3>
+          <ul className="hlist">
+            {mine.map((p) => (
+              <li key={p.id}>
+                <PRStatePill state={p.state} />{' '}
+                {p.url ? (
+                  <a className="linkbtn" href={p.url} target="_blank" rel="noreferrer">
+                    #{p.number} {p.title}
+                  </a>
+                ) : (
+                  p.title
+                )}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
       <div className="dsec">
         <h3>{t('detail.actions')}</h3>
         <div className="actions">
@@ -110,10 +172,6 @@ export default function AppDetail({ row, inPR, onAdd, onClose }: Props) {
               {inPR ? t('detail.inPR') : t('detail.addToPR')}
             </button>
           )}
-          <button className="btn ghost" type="button" disabled>
-            {t('detail.skip')}
-            <span className="later">{t('later')}</span>
-          </button>
           <button className="btn ghost" type="button" disabled>
             {t('detail.editRule')}
             <span className="later">{t('later')}</span>

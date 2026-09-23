@@ -11,7 +11,65 @@ export interface Status {
   timeZone: string
   hasToken: boolean
   gitAuthor?: string
+  prsReady: boolean
   problems: string[]
+}
+
+export interface Skip {
+  appDir: string
+  field: string
+  version: string
+  createdAt?: string
+}
+
+export type PRState = 'queued' | 'running' | 'open' | 'merged' | 'closed' | 'failed'
+
+export interface BumpItem {
+  appDir: string
+  app: string
+  field: string
+  kind: string
+  source: string
+  from: string
+  to: string
+  bump: string
+}
+
+export interface PullRequest {
+  id: number
+  createdAt: string
+  updatedAt: string
+  title: string
+  branch: string
+  state: PRState
+  autoMerge: boolean
+  number?: number
+  url?: string
+  error?: string
+  items: BumpItem[]
+}
+
+export const prBusy = (p: PullRequest) => p.state === 'queued' || p.state === 'running'
+
+// send posts or deletes JSON and returns the parsed reply, or nothing for a 204.
+export async function send<T>(method: 'POST' | 'DELETE', path: string, body: unknown): Promise<T | undefined> {
+  const res = await fetch(path, {
+    method,
+    headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+  if (!res.ok) {
+    let message = `${res.status} ${res.statusText}`.trim()
+    try {
+      const b = (await res.json()) as { error?: unknown }
+      if (typeof b.error === 'string' && b.error) message = b.error
+    } catch {
+      // Not our JSON; keep the status line.
+    }
+    throw new Error(message)
+  }
+  if (res.status === 204) return undefined
+  return (await res.json()) as T
 }
 
 export interface Pin {
