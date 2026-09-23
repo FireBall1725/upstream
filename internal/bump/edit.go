@@ -118,6 +118,10 @@ func ReplaceVersionMentions(content, from, to string, hints ...string) string {
 		if !strings.HasPrefix(strings.TrimSpace(l), "|") && !containsAny(l, hints) {
 			continue
 		}
+		// radarr's chart and app versions were both 6.0.4; the Chart Version row belongs to ReplaceChartVersionRow.
+		if isRow(l, "chart version") {
+			continue
+		}
 		// Two passes, because adjacent matches share the boundary character.
 		for range 2 {
 			l = re.ReplaceAllString(l, repl)
@@ -131,11 +135,37 @@ func ReplaceVersionMentions(content, from, to string, hints ...string) string {
 func ReplaceChartVersionRow(content, from, to string) string {
 	lines := strings.Split(content, "\n")
 	for i, l := range lines {
-		if strings.HasPrefix(strings.TrimSpace(l), "|") && strings.Contains(strings.ToLower(l), "chart version") {
+		if isRow(l, "chart version") {
 			lines[i] = strings.Replace(l, "`"+from+"`", "`"+to+"`", 1)
 		}
 	}
 	return strings.Join(lines, "\n")
+}
+
+var backticked = regexp.MustCompile("`[^`]*`")
+
+// SetAppVersionRow sets the App Version row to the new version whatever it held,
+// because that row drifts: sonarr's said 4.0.16 while the chart said 4.0.17.2952-ls306.
+func SetAppVersionRow(content, to string) string {
+	lines := strings.Split(content, "\n")
+	for i, l := range lines {
+		if isRow(l, "app version") {
+			if loc := backticked.FindStringIndex(l); loc != nil {
+				lines[i] = l[:loc[0]] + "`" + to + "`" + l[loc[1]:]
+			}
+		}
+	}
+	return strings.Join(lines, "\n")
+}
+
+// isRow reports a markdown table row whose first cell names label, like "| **App Version** | ...".
+func isRow(line, label string) bool {
+	t := strings.TrimSpace(line)
+	if !strings.HasPrefix(t, "|") {
+		return false
+	}
+	cells := strings.Split(t, "|")
+	return len(cells) > 2 && strings.EqualFold(strings.Trim(strings.TrimSpace(cells[1]), "*_ "), label)
 }
 
 func containsAny(s string, subs []string) bool {
