@@ -14,6 +14,7 @@ A self-hosted update tracker for GitOps repos. One Go binary (stdlib `net/http`,
 - `internal/versions/` decides whether a tag is a newer release of the same thing: same shape (prefix, number count, suffix, calver or not), same channel, linuxserver `-lsNN` as a build number.
 - `internal/sources/` lists image tags (go-containerregistry, anonymous) and Helm chart versions (index.yaml read line by line, or OCI tags), once per source per scan.
 - `internal/scan/` keeps a shallow clone under the data dir, runs one scan at a time, stores every result, and retries without the token if GitHub rejects it.
+- `internal/render/` renders each app with `helm template` (or reads its plain YAML) during a scan and adds the checks that only show in rendered manifests, like a rolling update on a ReadWriteOnce volume. `internal/helm/` runs helm with its caches under the data dir.
 - `internal/bump/` opens bump PRs one at a time: a fresh clone per PR, line-anchored edits (`edit.go`), `helm dependency update` for charts, then `verify` re-reads the clone and renders every touched chart before anything is pushed. `bump_test.go` runs the whole flow against a local bare repo and a fake GitHub.
 - `internal/db/` opens SQLite and runs the migrations in `internal/db/migrations/`; `internal/repository/` holds all the SQL; `internal/models/` the shared types.
 - `internal/api/router.go` lists every route, one line each. Handlers decode, call one thing and respond.

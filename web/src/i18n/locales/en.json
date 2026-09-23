@@ -163,6 +163,10 @@
     "not-a-workload": {
       "title": "Not a workload",
       "why": "Nothing is pinned here, so there's nothing to update."
+    },
+    "rwo-rolling-update": {
+      "title": "Rolling update on a ReadWriteOnce volume",
+      "why": "The new pod starts before the old one stops. If it lands on another node it can't attach the volume, and the rollout hangs until someone steps in. Recreate stops the old pod first. homarr hung like this on 2026-09-23."
     }
   },
   "scans": {

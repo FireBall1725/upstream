@@ -4,7 +4,7 @@ Upstream watches a GitOps repo and tells you which of your apps are behind. It r
 
 It's one Go binary with the web UI built in. Run one container with a small volume and it scans on a cron schedule.
 
-It scans on a schedule or on demand, checks every pinned image and chart against its registry or Helm repo, lists the updates and the repo hygiene problems it finds, and opens the bump PRs you pick. [docs/plan.md](docs/plan.md) has the design.
+It scans on a schedule or on demand, renders each app the way Argo CD does to catch rollouts that would hang, checks every pinned image and chart against its registry or Helm repo, lists the updates and the repo hygiene problems it finds, and opens the bump PRs you pick. [docs/plan.md](docs/plan.md) has the design.
 
 ## What a bump PR does
 
