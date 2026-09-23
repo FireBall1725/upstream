@@ -112,7 +112,7 @@ func setup(t *testing.T) *fixture {
 	files := map[string]string{
 		"apps/app-spoolman/spoolman/Chart.yaml":  "apiVersion: v2\nname: spoolman\nversion: 1.0.0\nappVersion: \"0.26.0\"\n",
 		"apps/app-spoolman/spoolman/values.yaml": "image:\n  repository: ghcr.io/donkie/spoolman\n  # -- pinned\n  tag: \"0.26.0\"\n",
-		"apps/app-spoolman/spoolman/README.md":   "Runs spoolman 0.26.0.\n",
+		"apps/app-spoolman/spoolman/README.md":   "| **App Version** | `0.26.0` |\n| **Chart Version** | `1.0.0` |\n\nGit `v0.26.0` publishes as image `0.26.0`.\n",
 		"apps/app-media/sonarr/Chart.yaml":       "apiVersion: v2\nname: sonarr\nversion: 4.0.16\n# renovate: image=lscr.io/linuxserver/sonarr\nappVersion: \"4.0.17.2952-ls306\"\n",
 		"apps/app-media/sonarr/values.yaml":      "image:\n  repository: lscr.io/linuxserver/sonarr\n  tag: \"\"\n",
 		"apps/app-ddns/ddns/deployment.yaml":     "spec:\n  containers:\n    - name: ddns\n      image: docker.io/favonia/cloudflare-ddns:1.16.2\n",
@@ -235,7 +235,7 @@ func TestOpenPR(t *testing.T) {
 	if c := show("apps/app-media/sonarr/Chart.yaml"); !strings.Contains(c, `appVersion: "4.0.20.3014-ls325"`) || !strings.Contains(c, "version: 4.0.17\n") || !strings.Contains(c, "# renovate:") {
 		t.Errorf("sonarr Chart.yaml:\n%s", c)
 	}
-	if r := show("apps/app-spoolman/spoolman/README.md"); r != "Runs spoolman 0.26.1.\n" {
+	if r := show("apps/app-spoolman/spoolman/README.md"); r != "| **App Version** | `0.26.1` |\n| **Chart Version** | `1.0.1` |\n\nGit `v0.26.0` publishes as image `0.26.0`.\n" {
 		t.Errorf("README:\n%s", r)
 	}
 	if d := show("apps/app-ddns/ddns/deployment.yaml"); !strings.Contains(d, "cloudflare-ddns:1.17.1") {

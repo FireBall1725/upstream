@@ -70,9 +70,9 @@ func AppVersionIs(content string, line int, from, to string) (string, error) {
 	return setLine(content, line, appVersionLine, from, to, true)
 }
 
-// BumpChartVersion adds one to the chart's own patch version, as every hand-made bump in the repo does.
-// A chart version that isn't x.y.z is left alone.
-func BumpChartVersion(content string) string {
+// BumpChartVersion adds one to the chart's own patch version, as every hand-made bump in the repo does,
+// and returns the old and new versions. A chart version that isn't x.y.z is left alone.
+func BumpChartVersion(content string) (next, from, to string) {
 	lines := strings.Split(content, "\n")
 	for i, l := range lines {
 		m := chartVersion.FindStringSubmatch(l)
@@ -80,10 +80,12 @@ func BumpChartVersion(content string) string {
 			continue
 		}
 		patch, _ := strconv.Atoi(m[5])
-		lines[i] = fmt.Sprintf("%s%s%s.%s.%d%s%s", m[1], m[2], m[3], m[4], patch+1, m[6], m[7])
-		return strings.Join(lines, "\n")
+		from = fmt.Sprintf("%s.%s.%s", m[3], m[4], m[5])
+		to = fmt.Sprintf("%s.%s.%d", m[3], m[4], patch+1)
+		lines[i] = m[1] + m[2] + to + m[6] + m[7]
+		return strings.Join(lines, "\n"), from, to
 	}
-	return content
+	return content, "", ""
 }
 
 // SetManifestImage rewrites repo:from to repo:to on one line of a plain manifest.
@@ -100,17 +102,47 @@ func SetManifestImage(content string, line int, repo, from, to string) (string, 
 	return strings.Join(lines, "\n"), nil
 }
 
-// ReplaceVersionMentions updates a README's mentions of the old version, whole tokens only.
-// Short versions are left alone, because "1.0" matches too much prose.
-func ReplaceVersionMentions(content, from, to string) string {
+// ReplaceVersionMentions updates a README's mentions of the old version, whole tokens only, on
+// table rows and on lines that name one of the hints (the image). Prose is left alone: the spoolman
+// README explains tag naming with an example version that isn't a pin.
+// Short versions are left alone, because "1.0" matches too much.
+func ReplaceVersionMentions(content, from, to string, hints ...string) string {
 	if len(from) < 5 {
 		return content
 	}
 	// A full stop after the version still counts as its end when a sentence ends there.
 	re := regexp.MustCompile(`(^|[^\w.-])` + regexp.QuoteMeta(from) + `(\.?(?:$|[^\w.-]))`)
-	// Two passes, because adjacent matches share the boundary character.
-	for range 2 {
-		content = re.ReplaceAllString(content, "${1}"+strings.ReplaceAll(to, "$", "$$")+"${2}")
+	repl := "${1}" + strings.ReplaceAll(to, "$", "$$") + "${2}"
+	lines := strings.Split(content, "\n")
+	for i, l := range lines {
+		if !strings.HasPrefix(strings.TrimSpace(l), "|") && !containsAny(l, hints) {
+			continue
+		}
+		// Two passes, because adjacent matches share the boundary character.
+		for range 2 {
+			l = re.ReplaceAllString(l, repl)
+		}
+		lines[i] = l
 	}
-	return content
+	return strings.Join(lines, "\n")
+}
+
+// ReplaceChartVersionRow updates a README table row that names the chart version.
+func ReplaceChartVersionRow(content, from, to string) string {
+	lines := strings.Split(content, "\n")
+	for i, l := range lines {
+		if strings.HasPrefix(strings.TrimSpace(l), "|") && strings.Contains(strings.ToLower(l), "chart version") {
+			lines[i] = strings.Replace(l, "`"+from+"`", "`"+to+"`", 1)
+		}
+	}
+	return strings.Join(lines, "\n")
+}
+
+func containsAny(s string, subs []string) bool {
+	for _, sub := range subs {
+		if sub != "" && strings.Contains(s, sub) {
+			return true
+		}
+	}
+	return false
 }
