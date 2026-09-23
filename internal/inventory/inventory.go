@@ -37,6 +37,14 @@ type Pin struct {
 	File       string `json:"file"`
 	Line       int    `json:"line"`
 	Field      string `json:"field"`
+
+	// Set by the scan after asking the registry or Helm repo.
+	Latest           string `json:"latest,omitempty"`
+	LatestAppVersion string `json:"latestAppVersion,omitempty"`
+	// Update is major, minor, patch, rebuild, current, unchecked or error.
+	Update string `json:"update,omitempty"`
+	// Note says why a pin is unchecked or what went wrong.
+	Note string `json:"note,omitempty"`
 }
 
 // App is one directory the ApplicationSet turns into an Argo CD Application.

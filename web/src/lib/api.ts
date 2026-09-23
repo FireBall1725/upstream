@@ -7,6 +7,10 @@ export interface Status {
   branch: string
   appGlob: string
   schedule: string
+  nextScan?: string
+  timeZone: string
+  hasToken: boolean
+  gitAuthor?: string
   problems: string[]
 }
 
@@ -21,6 +25,10 @@ export interface Pin {
   file: string
   line: number
   field: string
+  latest?: string
+  latestAppVersion?: string
+  update?: 'major' | 'minor' | 'patch' | 'rebuild' | 'current' | 'unchecked' | 'error'
+  note?: string
 }
 
 export type Severity = 'fix' | 'tidy' | 'note' | 'info'
@@ -41,6 +49,18 @@ export interface App {
   findings: Finding[]
 }
 
+export interface ScanSummary {
+  startedAt: string
+  finishedAt: string
+  state: 'ok' | 'failed'
+  error?: string
+  commit?: string
+  apps: number
+  checked: number
+  updates: number
+  errors: number
+}
+
 export interface ScanResult {
   state: 'never' | 'running' | 'ok' | 'failed'
   startedAt?: string
@@ -49,6 +69,7 @@ export interface ScanResult {
   commit?: string
   commitDate?: string
   apps: App[]
+  history: ScanSummary[]
 }
 
 // getJSON throws with the server's error message, or its status line when the body isn't ours.

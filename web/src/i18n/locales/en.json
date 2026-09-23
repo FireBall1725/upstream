@@ -1,61 +1,180 @@
 {
-  "app": {
-    "name": "Upstream",
-    "version": "Version {{version}}"
+  "app": { "name": "Upstream" },
+  "later": "later",
+  "top": {
+    "last": "Last scan",
+    "never": "Not scanned yet",
+    "next": "next",
+    "scanNow": "Scan now",
+    "scanning": "Scanning…"
   },
   "status": {
     "loading": "Loading…",
     "unreachable": "Couldn't reach the Upstream server: {{error}}",
     "setupTitle": "Setup isn't finished",
-    "schedule": "Schedule {{schedule}}"
-  },
-  "scan": {
-    "now": "Scan now",
-    "running": "Scanning…",
-    "last": "Last scan {{time}}",
-    "none": "Not scanned yet",
-    "failed": "The last scan failed: {{error}}",
-    "emptyPrompt": "No scans yet. Press Scan now to read the repo.",
-    "firstRunning": "Reading the repo…"
+    "scanFailed": "The last scan failed: {{error}}",
+    "noScans": "No scans yet. Press Scan now to read the repo.",
+    "firstScan": "Reading the repo and checking registries…"
   },
   "summary": {
-    "apps": "apps",
-    "detail": "{{pins}} pinned versions · {{findings}} hygiene findings, {{fix}} to fix",
-    "noUpdatesYet": "This lists what the repo pins. Checking registries and Helm repos for newer versions comes next."
+    "label": "Summary",
+    "updates": "updates available",
+    "dist": "Apps by update type",
+    "of": "of",
+    "apps": "apps"
+  },
+  "bump": {
+    "major": "Major",
+    "minor": "Minor",
+    "patch": "Patch",
+    "rebuild": "Rebuild",
+    "current": "Current",
+    "unchecked": "Can't check"
   },
   "tabs": {
-    "apps": "Apps",
-    "hygiene": "Repo hygiene"
+    "updates": "Updates",
+    "hygiene": "Repo hygiene",
+    "scans": "Scans and settings"
   },
-  "apps": {
-    "filter": "Filter apps",
-    "empty": "Nothing matches.",
+  "filter": {
+    "updates": "Needs update",
+    "all": "All",
+    "namespace": "Namespace",
+    "allNamespaces": "All namespaces",
+    "search": "Filter apps"
+  },
+  "select": {
+    "label": "Select:",
+    "patches": "all patches",
+    "minorPatch": "minor and patch",
+    "shown": "everything shown",
+    "namespace": "all of {{name}}",
+    "inPR": "in the PR",
+    "review": "Review PR",
+    "clear": "Clear",
+    "hint": "Tick apps to bump them together"
+  },
+  "table": {
+    "pickAll": "Select all shown updates",
+    "pick": "Add {{name}} to the PR",
+    "app": "App",
+    "source": "Source",
+    "running": "Running",
+    "latest": "Latest",
+    "update": "Update",
+    "channel": "Channel",
+    "nothing": "Nothing matches.",
     "nothingPinned": "Nothing pinned",
-    "declared": "Chart.yaml says {{version}}",
-    "col": {
-      "app": "App",
-      "source": "Source",
-      "version": "Pinned version",
-      "pinnedIn": "Pinned in"
+    "none": "none",
+    "morePins_one": "+{{count}} more",
+    "morePins_other": "+{{count}} more"
+  },
+  "detail": {
+    "label": "App detail",
+    "close": "Close",
+    "pins_one": "{{count}} pinned version",
+    "pins_other": "{{count}} pinned versions",
+    "nothingPinned": "Nothing is pinned here, so there's nothing to update.",
+    "running": "Running",
+    "latest": "Latest",
+    "latestSame": "Latest (same)",
+    "declared": "Chart.yaml asks for {{declared}}, but the vendored chart in charts/ is {{version}}, and that's what runs.",
+    "appInChart": "App inside the chart:",
+    "file": "File",
+    "field": "Field",
+    "source": "Source",
+    "channel": "Channel",
+    "hygiene": "Repo hygiene",
+    "actions": "Actions",
+    "addToPR": "Add to PR",
+    "inPR": "In the PR",
+    "skip": "Skip this version",
+    "editRule": "Edit tag rule"
+  },
+  "pr": {
+    "one": "New pull request",
+    "many": "{{count}} pull requests",
+    "scope": "{{apps}} apps · {{namespaces}} namespaces",
+    "title": "Title",
+    "branch": "Branch",
+    "into": "into",
+    "body": "The body gets a table of every bump with a link to its release notes.",
+    "splitTitle": "Give each major its own PR",
+    "splitWhy_one": "{{count}} major bump here ({{names}}). On its own PR, a bad major can be reverted without undoing the rest.",
+    "splitWhy_other": "{{count}} major bumps here ({{names}}). On its own PR, a bad major can be reverted without undoing the rest.",
+    "changes": "Changes",
+    "group": "PR {{n}}: {{title}}",
+    "alone": "{{name}} on its own",
+    "remove": "Remove {{name}}",
+    "helm": "Chart bumps run helm dependency update in the app's directory, because Chart.lock and the vendored charts/*.tgz are committed.",
+    "autoMerge": "Auto-merge",
+    "autoMergeWhy": "Merge as soon as the PR opens. The repo has no CI to wait for.",
+    "open": "Open PR",
+    "openMany": "Open {{count}} PRs",
+    "clear": "Clear",
+    "notYet": "Opening PRs is the next thing being built. The preview shows exactly what they'll contain."
+  },
+  "hygiene": { "clean": "No hygiene findings." },
+  "severity": { "fix": "Fix", "tidy": "Tidy", "note": "Note", "info": "Info" },
+  "check": {
+    "floating-tag": {
+      "title": "Floating tags",
+      "why": "These can't be checked for updates because the tag moves on its own. A pod restart can change the version with no commit."
+    },
+    "no-tag": {
+      "title": "No tag",
+      "why": "An image with no tag runs whatever latest is when the pod starts."
+    },
+    "stale-vendored-chart": {
+      "title": "Vendored chart older than Chart.yaml",
+      "why": "Helm renders the chart in charts/, so the version Chart.yaml asks for never deployed. Run helm dependency update and commit charts/."
+    },
+    "unpinned-chart": {
+      "title": "Chart dependency with no version",
+      "why": "Helm takes whatever is newest when the lock is rebuilt."
+    },
+    "chart-range": {
+      "title": "Version range instead of a pin",
+      "why": "Chart.lock holds the real version. The range is fine if the lock is committed."
+    },
+    "appversion-drift": {
+      "title": "Chart.yaml appVersion disagrees with the image tag",
+      "why": "The values.yaml tag is what runs. The appVersion label is stale, so Argo's UI and anything reading the chart shows the wrong version."
+    },
+    "renovate-hint": {
+      "title": "Renovate hint names the wrong image",
+      "why": "Renovate looks up the image in the comment, not the one that runs."
+    },
+    "not-a-workload": {
+      "title": "Not a workload",
+      "why": "Nothing is pinned here, so there's nothing to update."
     }
   },
-  "hygiene": {
-    "clean": "No hygiene findings."
-  },
-  "severity": {
-    "fix": "Fix",
-    "tidy": "Tidy",
-    "note": "Note",
-    "info": "Info"
-  },
-  "check": {
-    "floating-tag": "Floating tag",
-    "no-tag": "No tag",
-    "stale-vendored-chart": "Vendored chart older than Chart.yaml",
-    "unpinned-chart": "Chart dependency with no version",
-    "chart-range": "Version range instead of a pin",
-    "appversion-drift": "appVersion disagrees with the image tag",
-    "renovate-hint": "Renovate hint names the wrong image",
-    "not-a-workload": "Not a workload"
+  "scans": {
+    "schedule": "Schedule",
+    "scheduleWhy": "Cron expression in {{tz}}. Each scan pulls the repo, reads every app and asks each registry and Helm repo for newer versions.",
+    "next": "Next scan {{time}}.",
+    "sources": "Sources",
+    "repo": "Git repo",
+    "paths": "App paths",
+    "token": "GitHub token",
+    "tokenSet": "Set",
+    "author": "Commit author",
+    "registries": "Registries",
+    "anonymous": "Anonymous",
+    "notify": "Notify",
+    "off": "Off",
+    "notSet": "Not set",
+    "history": "Scan history",
+    "started": "Started",
+    "commit": "Commit",
+    "apps": "Apps",
+    "checked": "Checked",
+    "updates": "Updates",
+    "errors": "Errors",
+    "took": "Took",
+    "failed": "Failed",
+    "noneYet": "No scans yet.",
+    "memoryOnly": "History is kept in memory and starts over when the pod restarts."
   }
 }

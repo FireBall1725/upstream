@@ -21,6 +21,8 @@ import (
 
 	"github.com/fireball1725/upstream/internal/config"
 	"github.com/fireball1725/upstream/internal/inventory"
+	"github.com/fireball1725/upstream/internal/sources"
+	"github.com/fireball1725/upstream/internal/version"
 )
 
 // State is where the latest scan got to.
@@ -42,7 +44,24 @@ type Result struct {
 	Commit     string          `json:"commit,omitempty"`
 	CommitDate string          `json:"commitDate,omitempty"`
 	Apps       []inventory.App `json:"apps"`
+	History    []Summary       `json:"history"`
 }
+
+// Summary is one finished scan, kept for the Scans tab.
+type Summary struct {
+	StartedAt  time.Time `json:"startedAt"`
+	FinishedAt time.Time `json:"finishedAt"`
+	State      State     `json:"state"`
+	Error      string    `json:"error,omitempty"`
+	Commit     string    `json:"commit,omitempty"`
+	Apps       int       `json:"apps"`
+	Checked    int       `json:"checked"`
+	Updates    int       `json:"updates"`
+	Errors     int       `json:"errors"`
+}
+
+// historySize is how many scans the Scans tab lists; it resets on restart until SQLite lands.
+const historySize = 20
 
 // ErrNotConfigured means there's no repo to scan.
 var ErrNotConfigured = errors.New("UPSTREAM_REPO is not set, so there is nothing to scan")
@@ -51,13 +70,15 @@ var ErrNotConfigured = errors.New("UPSTREAM_REPO is not set, so there is nothing
 type Service struct {
 	cfg     *config.Config
 	timeout time.Duration
+	// skipLookups keeps tests off the network.
+	skipLookups bool
 
 	mu     sync.Mutex
 	result Result
 }
 
 func New(cfg *config.Config) *Service {
-	return &Service{cfg: cfg, timeout: 5 * time.Minute, result: Result{State: StateNever, Apps: []inventory.App{}}}
+	return &Service{cfg: cfg, timeout: 5 * time.Minute, result: Result{State: StateNever, Apps: []inventory.App{}, History: []Summary{}}}
 }
 
 // Latest returns a copy of the latest result.
@@ -96,13 +117,34 @@ func (s *Service) run(ctx context.Context) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.result.FinishedAt = &now
+	sum := Summary{StartedAt: *s.result.StartedAt, FinishedAt: now, Commit: commit}
 	if err != nil {
 		s.result.State, s.result.Error = StateFailed, err.Error()
+		sum.State, sum.Error = StateFailed, err.Error()
 		slog.Error("scan failed", "error", err)
-		return
+	} else {
+		s.result.State, s.result.Commit, s.result.CommitDate, s.result.Apps = StateOK, commit, date, apps
+		sum.State, sum.Apps = StateOK, len(apps)
+		for _, a := range apps {
+			for _, p := range a.Pins {
+				switch p.Update {
+				case UpdateError:
+					sum.Errors++
+				case UpdateUnchecked:
+				case UpdateCurrent:
+					sum.Checked++
+				default:
+					sum.Checked++
+					sum.Updates++
+				}
+			}
+		}
+		slog.Info("scan finished", "commit", commit, "apps", sum.Apps, "updates", sum.Updates, "errors", sum.Errors, "took", now.Sub(sum.StartedAt).Round(time.Millisecond).String())
 	}
-	s.result.State, s.result.Commit, s.result.CommitDate, s.result.Apps = StateOK, commit, date, apps
-	slog.Info("scan finished", "commit", commit, "apps", len(apps), "took", now.Sub(*s.result.StartedAt).Round(time.Millisecond).String())
+	s.result.History = append([]Summary{sum}, s.result.History...)
+	if len(s.result.History) > historySize {
+		s.result.History = s.result.History[:historySize]
+	}
 }
 
 func (s *Service) scan(ctx context.Context) (commit, date string, apps []inventory.App, err error) {
@@ -116,7 +158,13 @@ func (s *Service) scan(ctx context.Context) (commit, date string, apps []invento
 	}
 	commit, date, _ = strings.Cut(strings.TrimSpace(out), " ")
 	apps, err = inventory.Scan(dir, s.cfg.AppGlob)
-	return commit, date, apps, err
+	if err != nil {
+		return "", "", nil, err
+	}
+	if !s.skipLookups {
+		checkApps(ctx, sources.New("upstream/"+version.String()), apps)
+	}
+	return commit, date, apps, nil
 }
 
 // sync makes dir a shallow clone of the configured branch, recloning if the repo URL changed.

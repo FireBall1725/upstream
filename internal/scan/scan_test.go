@@ -63,6 +63,7 @@ func TestService(t *testing.T) {
 
 	cfg := &config.Config{Repo: "file://" + repo, Branch: "main", AppGlob: "apps/*/*", DataDir: t.TempDir()}
 	s := New(cfg)
+	s.skipLookups = true
 
 	if started, err := s.Start(context.Background()); !started || err != nil {
 		t.Fatalf("start: %v %v", started, err)
@@ -95,6 +96,9 @@ func TestService(t *testing.T) {
 	r = waitDone(t, s)
 	if r.State != StateFailed || r.Error == "" || len(r.Apps) != 2 {
 		t.Fatalf("failed scan %+v", r)
+	}
+	if len(r.History) != 3 || r.History[0].State != StateFailed || r.History[1].Apps != 2 {
+		t.Errorf("history newest first %+v", r.History)
 	}
 }
 

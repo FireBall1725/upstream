@@ -11,6 +11,8 @@ A self-hosted update tracker for GitOps repos. One Go binary (stdlib `net/http`,
 - `cmd/upstream/main.go` wires config, the scan service, the cron schedule and the HTTP server, nothing else.
 - `internal/config/` reads env vars. Nothing defaults to a particular homelab; our values live in the chart in homelab-applications.
 - `internal/inventory/` walks the app glob and records every pinned version with its file and line, plus the hygiene findings. It reads vendored `charts/*.tgz`, because that is what Helm renders, not what `Chart.yaml` declares.
+- `internal/versions/` decides whether a tag is a newer release of the same thing: same shape (prefix, number count, suffix, calver or not), same channel, linuxserver `-lsNN` as a build number.
+- `internal/sources/` lists image tags (go-containerregistry, anonymous) and Helm chart versions (index.yaml read line by line, or OCI tags), once per source per scan.
 - `internal/scan/` keeps a shallow clone under the data dir, runs one scan at a time and holds the last result in memory until SQLite lands.
 - `internal/api/router.go` lists every route, one line each. Handlers decode, call one thing and respond.
 - `internal/ui/` embeds `dist/`. The `.gitkeep` there lets a Go-only build compile; the Vite config writes it back after every build.
