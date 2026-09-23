@@ -60,7 +60,10 @@ dependencies:
 	if err != nil {
 		t.Fatal(err)
 	}
-	got = BumpChartVersion(got)
+	got, from, to := BumpChartVersion(got)
+	if from != "1.0.0" || to != "1.0.1" {
+		t.Errorf("chart version %s -> %s", from, to)
+	}
 	want := strings.Replace(strings.Replace(in, "version: 0.41.0", "version: 0.45.0", 1), "version: 1.0.0", "version: 1.0.1", 1)
 	if got != want {
 		t.Errorf("got\n%s\nwant\n%s", got, want)
@@ -87,11 +90,11 @@ func TestAppVersion(t *testing.T) {
 
 func TestBumpChartVersionLeavesOddVersions(t *testing.T) {
 	for _, in := range []string{"version: 1.0\n", "name: x\n"} {
-		if got := BumpChartVersion(in); got != in {
+		if got, from, _ := BumpChartVersion(in); got != in || from != "" {
 			t.Errorf("%q changed to %q", in, got)
 		}
 	}
-	if got := BumpChartVersion("version: 4.0.16\n"); got != "version: 4.0.17\n" {
+	if got, _, _ := BumpChartVersion("version: 4.0.16\n"); got != "version: 4.0.17\n" {
 		t.Errorf("got %q", got)
 	}
 }
@@ -108,13 +111,28 @@ func TestSetManifestImage(t *testing.T) {
 }
 
 func TestReplaceVersionMentions(t *testing.T) {
-	in := "Runs spoolman 0.26.0 (image ghcr.io/donkie/spoolman:0.26.0). Not 10.26.0 or 0.26.0.1 or 0.26.0-rc.1. Pinned to 0.26.0.\n"
-	got := ReplaceVersionMentions(in, "0.26.0", "0.26.1")
-	want := "Runs spoolman 0.26.1 (image ghcr.io/donkie/spoolman:0.26.1). Not 10.26.0 or 0.26.0.1 or 0.26.0-rc.1. Pinned to 0.26.1.\n"
+	// The real spoolman README: table rows update, the prose example about tag naming doesn't.
+	in := "| **Image** | `ghcr.io/donkie/spoolman:0.26.0` (public) |\n" +
+		"| **Chart Version** | `0.1.0` |\n" +
+		"| **App Version** | `0.26.0` |\n" +
+		"\n" +
+		"Image tags carry no leading `v`: git `v0.26.0` publishes as image `0.26.0`.\n" +
+		"Pull ghcr.io/donkie/spoolman:0.26.0 to test. Not 10.26.0 or 0.26.0.1.\n"
+	got := ReplaceVersionMentions(in, "0.26.0", "0.26.1", "ghcr.io/donkie/spoolman")
+	got = ReplaceChartVersionRow(got, "0.1.0", "0.1.1")
+	want := "| **Image** | `ghcr.io/donkie/spoolman:0.26.1` (public) |\n" +
+		"| **Chart Version** | `0.1.1` |\n" +
+		"| **App Version** | `0.26.1` |\n" +
+		"\n" +
+		"Image tags carry no leading `v`: git `v0.26.0` publishes as image `0.26.0`.\n" +
+		"Pull ghcr.io/donkie/spoolman:0.26.1 to test. Not 10.26.0 or 0.26.0.1.\n"
 	if got != want {
 		t.Errorf("got\n%s\nwant\n%s", got, want)
 	}
-	if got := ReplaceVersionMentions("v1.0 and 1.0", "1.0", "1.1"); got != "v1.0 and 1.0" {
+	if got := ReplaceVersionMentions("| v1.0 | 1.0 |", "1.0", "1.1"); got != "| v1.0 | 1.0 |" {
 		t.Errorf("short versions should be left alone: %s", got)
+	}
+	if got := ReplaceVersionMentions("| x | 0.26.0. |", "0.26.0", "0.26.1"); got != "| x | 0.26.1. |" {
+		t.Errorf("sentence-ending full stop: %s", got)
 	}
 }

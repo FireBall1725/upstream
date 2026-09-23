@@ -335,9 +335,23 @@ func (s *Service) edit(ctx context.Context, dir string, items []models.BumpItem)
 
 	for d := range appDirs {
 		chart := filepath.Join(dir, filepath.FromSlash(d), "Chart.yaml")
-		if raw, err := os.ReadFile(chart); err == nil {
-			if err := os.WriteFile(chart, []byte(BumpChartVersion(string(raw))), 0o644); err != nil {
-				return err
+		raw, err := os.ReadFile(chart)
+		if err != nil {
+			continue
+		}
+		next, from, to := BumpChartVersion(string(raw))
+		if err := os.WriteFile(chart, []byte(next), 0o644); err != nil {
+			return err
+		}
+		if from == "" {
+			continue
+		}
+		readme := filepath.Join(dir, filepath.FromSlash(d), "README.md")
+		if raw, err := os.ReadFile(readme); err == nil {
+			if updated := ReplaceChartVersionRow(string(raw), from, to); updated != string(raw) {
+				if err := os.WriteFile(readme, []byte(updated), 0o644); err != nil {
+					return err
+				}
 			}
 		}
 	}
@@ -388,7 +402,7 @@ func applyItem(dir string, it models.BumpItem, p inventory.Pin) error {
 
 	readme := filepath.Join(appDir, "README.md")
 	if raw, err := os.ReadFile(readme); err == nil {
-		if next := ReplaceVersionMentions(string(raw), it.From, it.To); next != string(raw) {
+		if next := ReplaceVersionMentions(string(raw), it.From, it.To, p.Image); next != string(raw) {
 			return os.WriteFile(readme, []byte(next), 0o644)
 		}
 	}
