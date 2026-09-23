@@ -2,7 +2,7 @@
 // Copyright (C) 2026 FireBall1725
 
 import { describe, expect, it } from 'vitest'
-import { repoLabel } from './api'
+import { formatTime, repoLabel } from './api'
 
 describe('repoLabel', () => {
   it.each([
@@ -12,5 +12,16 @@ describe('repoLabel', () => {
     ['https://gitea.local/team/gitops.git', 'team/gitops'],
   ])('%s', (url, want) => {
     expect(repoLabel(url)).toBe(want)
+  })
+})
+
+describe('formatTime', () => {
+  it('uses the 24-hour clock', () => {
+    const d = new Date(2026, 8, 23, 17, 5)
+    expect(formatTime(d.toISOString())).toBe('2026-09-23 17:05')
+  })
+  it('is empty for missing or bad input', () => {
+    expect(formatTime(undefined)).toBe('')
+    expect(formatTime('nope')).toBe('')
   })
 })

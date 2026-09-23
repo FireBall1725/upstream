@@ -131,7 +131,7 @@ JSON under `/api/`, used only by the embedded UI: apps, one app, hygiene, scans,
 Each step is its own PR in the new repo and ends with something that runs.
 
 1. **Scaffold.** Repo, CI, Dockerfile, version package, Vite app embedded in the binary. Done when `docker run` serves a blank page with the right version in it.
-2. **Inventory and hygiene.** Tested against a snapshot of homelab-applications at `f64f9b5`. Done when it finds 58 apps and the same pins and hygiene items the mockup shows.
+2. **Inventory and hygiene.** Done 2026-09-23, with a "Scan now" button and the cron schedule pulled forward; results live in memory until step 4 adds SQLite. Tested against a snapshot of homelab-applications at `f64f9b5`. Done when it finds 58 apps and the same pins and hygiene items the mockup shows.
 3. **Version rules.** Table tests built from every trap in the list above. Done when the tautulli, open-webui, lidarr, nightly and beta cases all resolve correctly.
 4. **Sources, scan, storage, schedule, API.** HTTP clients tested against recorded responses. Done when a live scan agrees with the 2026-09-22 probe, apart from releases that came out since.
 5. **UI.** The mockup rebuilt in React against the real API.

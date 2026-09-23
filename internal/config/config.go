@@ -6,9 +6,12 @@ package config
 
 import (
 	"errors"
+	"fmt"
 	"log/slog"
 	"os"
 	"strings"
+
+	"github.com/robfig/cron/v3"
 )
 
 // Config holds everything Upstream needs to know about the repo it watches.
@@ -54,6 +57,9 @@ func (c *Config) Problems() []error {
 	var errs []error
 	if c.Repo == "" {
 		errs = append(errs, errors.New("UPSTREAM_REPO is not set, so there is nothing to scan"))
+	}
+	if _, err := cron.ParseStandard(c.Schedule); err != nil {
+		errs = append(errs, fmt.Errorf("UPSTREAM_SCHEDULE %q isn't a valid cron expression, so scans only run on demand: %w", c.Schedule, err))
 	}
 	if c.GitHubToken == "" {
 		errs = append(errs, errors.New("GITHUB_TOKEN is not set, so release notes and bump PRs are off"))

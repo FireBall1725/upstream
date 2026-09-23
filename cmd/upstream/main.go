@@ -18,7 +18,9 @@ import (
 
 	"github.com/fireball1725/upstream/internal/api"
 	"github.com/fireball1725/upstream/internal/config"
+	"github.com/fireball1725/upstream/internal/scan"
 	"github.com/fireball1725/upstream/internal/version"
+	"github.com/robfig/cron/v3"
 )
 
 func main() {
@@ -30,9 +32,29 @@ func main() {
 		slog.Warn("config", "problem", p.Error())
 	}
 
+	scans := scan.New(cfg)
+	// Scan at boot so the page has something to show; the result lives in memory until SQLite lands.
+	if _, err := scans.Start(context.Background()); err != nil {
+		slog.Warn("no scan at startup", "reason", err.Error())
+	}
+
+	// cron uses the process time zone, so TZ decides when "0 */6 * * *" fires.
+	sched := cron.New()
+	if cfg.Repo != "" {
+		if _, err := sched.AddFunc(cfg.Schedule, func() {
+			if _, err := scans.Start(context.Background()); err != nil {
+				slog.Error("scheduled scan", "error", err)
+			}
+		}); err != nil {
+			slog.Error("scan schedule not started", "schedule", cfg.Schedule, "error", err)
+		}
+	}
+	sched.Start()
+	defer sched.Stop()
+
 	srv := &http.Server{
 		Addr:              cfg.Addr,
-		Handler:           api.NewRouter(cfg),
+		Handler:           api.NewRouter(cfg, scans),
 		ReadHeaderTimeout: 10 * time.Second,
 		ReadTimeout:       30 * time.Second,
 		WriteTimeout:      30 * time.Second,

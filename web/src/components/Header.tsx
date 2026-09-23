@@ -2,10 +2,19 @@
 // Copyright (C) 2026 FireBall1725
 
 import { useTranslation } from 'react-i18next'
-import { repoLabel, type Status } from '../lib/api'
+import { formatTime, repoLabel, type ScanResult, type Status } from '../lib/api'
 
-export default function Header({ status }: { status: Status | null }) {
+interface Props {
+  status: Status | null
+  scan: ScanResult | null
+  onScan: () => void
+}
+
+export default function Header({ status, scan, onScan }: Props) {
   const { t } = useTranslation()
+  const running = scan?.state === 'running'
+  const last = scan?.state === 'ok' || scan?.state === 'failed' ? formatTime(scan.finishedAt) : ''
+
   return (
     <header className="flex flex-wrap items-center gap-x-6 gap-y-3 py-4">
       <div className="flex items-baseline gap-2.5">
@@ -15,15 +24,26 @@ export default function Header({ status }: { status: Status | null }) {
       {status?.repo && (
         <div className="flex flex-wrap gap-2 font-mono text-xs text-muted">
           <span className="rounded bg-sunk px-1.5 py-0.5">{repoLabel(status.repo)}</span>
-          <span className="rounded bg-sunk px-1.5 py-0.5">{status.branch}</span>
+          <span className="rounded bg-sunk px-1.5 py-0.5">
+            {status.branch}
+            {scan?.commit && ` @ ${scan.commit.slice(0, 7)}`}
+          </span>
           <span className="rounded bg-sunk px-1.5 py-0.5">{status.appGlob}</span>
         </div>
       )}
       <div className="flex-1" />
       <div className="text-right text-xs text-muted">
-        {status && <div>{t('status.schedule', { schedule: status.schedule })}</div>}
-        <div className="font-mono">{t('app.version', { version: status?.version ?? __APP_VERSION__ })}</div>
+        <div>{last ? t('scan.last', { time: last }) : t('scan.none')}</div>
+        {status && <div className="font-mono">{t('status.schedule', { schedule: status.schedule })}</div>}
       </div>
+      <button
+        type="button"
+        onClick={onScan}
+        disabled={running || !status?.repo}
+        className="rounded-md border border-line bg-surface px-3.5 py-2 text-[13px] font-semibold hover:bg-sunk focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-60"
+      >
+        {running ? t('scan.running') : t('scan.now')}
+      </button>
     </header>
   )
 }

@@ -10,11 +10,59 @@ export interface Status {
   problems: string[]
 }
 
-// getJSON throws with the server's status line, so a failed call reads as a real error in the UI.
+export interface Pin {
+  kind: 'image' | 'chart'
+  name: string
+  image?: string
+  chartRepo?: string
+  version: string
+  declared?: string
+  appVersion?: string
+  file: string
+  line: number
+  field: string
+}
+
+export type Severity = 'fix' | 'tidy' | 'note' | 'info'
+
+export interface Finding {
+  check: string
+  severity: Severity
+  message: string
+  file?: string
+  line?: number
+}
+
+export interface App {
+  namespace: string
+  name: string
+  dir: string
+  pins: Pin[]
+  findings: Finding[]
+}
+
+export interface ScanResult {
+  state: 'never' | 'running' | 'ok' | 'failed'
+  startedAt?: string
+  finishedAt?: string
+  error?: string
+  commit?: string
+  commitDate?: string
+  apps: App[]
+}
+
+// getJSON throws with the server's error message, or its status line when the body isn't ours.
 export async function getJSON<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(path, { ...init, headers: { Accept: 'application/json', ...init?.headers } })
   if (!res.ok) {
-    throw new Error(`${res.status} ${res.statusText}`.trim())
+    let message = `${res.status} ${res.statusText}`.trim()
+    try {
+      const body = (await res.json()) as { error?: unknown }
+      if (typeof body.error === 'string' && body.error) message = body.error
+    } catch {
+      // Not JSON, e.g. an ingress error page; the status line is the best we have.
+    }
+    throw new Error(message)
   }
   return (await res.json()) as T
 }
@@ -25,4 +73,18 @@ export function repoLabel(url: string): string {
     .replace(/^[a-z]+:\/\/[^/]+\//, '')
     .replace(/^git@[^:]+:/, '')
     .replace(/\.git$/, '')
+}
+
+// formatTime renders an ISO time as YYYY-MM-DD HH:MM on the 24-hour clock in the viewer's zone.
+export function formatTime(iso: string | undefined): string {
+  if (!iso) return ''
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return ''
+  const p = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`
+}
+
+// findingFor returns the finding that points at the same line as a pin, if any.
+export function findingFor(app: App, pin: Pin): Finding | undefined {
+  return app.findings.find((f) => f.file === pin.file && f.line === pin.line)
 }
