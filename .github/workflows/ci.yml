@@ -14,10 +14,10 @@ concurrency:
 
 jobs:
   go:
-    uses: FireBall1725/workflows/.github/workflows/ci-go.yml@ci-node-working-directory
+    uses: FireBall1725/workflows/.github/workflows/ci-go.yml@v1
 
   web:
-    uses: FireBall1725/workflows/.github/workflows/ci-node.yml@ci-node-working-directory
+    uses: FireBall1725/workflows/.github/workflows/ci-node.yml@v1
     with:
       working-directory: web
       # Same major as the Dockerfile's web stage.
