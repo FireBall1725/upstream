@@ -4,7 +4,7 @@ Upstream watches a GitOps repo and tells you which of your apps are behind. It r
 
 It's one Go binary with the web UI built in. Run one container with a small volume and it scans on a cron schedule.
 
-**Status:** early. The server, the UI shell and the release pipeline work. Scanning and bump PRs are being built now; [docs/plan.md](docs/plan.md) has the order and the design.
+**Status:** early. It scans the repo on a schedule or on demand and lists every pinned version and the repo hygiene problems it finds. Checking registries for newer versions and opening bump PRs are next; [docs/plan.md](docs/plan.md) has the order and the design.
 
 ## Running it
 

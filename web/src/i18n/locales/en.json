@@ -7,7 +7,55 @@
     "loading": "Loading…",
     "unreachable": "Couldn't reach the Upstream server: {{error}}",
     "setupTitle": "Setup isn't finished",
-    "noScans": "No scans yet.",
     "schedule": "Schedule {{schedule}}"
+  },
+  "scan": {
+    "now": "Scan now",
+    "running": "Scanning…",
+    "last": "Last scan {{time}}",
+    "none": "Not scanned yet",
+    "failed": "The last scan failed: {{error}}",
+    "emptyPrompt": "No scans yet. Press Scan now to read the repo.",
+    "firstRunning": "Reading the repo…"
+  },
+  "summary": {
+    "apps": "apps",
+    "detail": "{{pins}} pinned versions · {{findings}} hygiene findings, {{fix}} to fix",
+    "noUpdatesYet": "This lists what the repo pins. Checking registries and Helm repos for newer versions comes next."
+  },
+  "tabs": {
+    "apps": "Apps",
+    "hygiene": "Repo hygiene"
+  },
+  "apps": {
+    "filter": "Filter apps",
+    "empty": "Nothing matches.",
+    "nothingPinned": "Nothing pinned",
+    "declared": "Chart.yaml says {{version}}",
+    "col": {
+      "app": "App",
+      "source": "Source",
+      "version": "Pinned version",
+      "pinnedIn": "Pinned in"
+    }
+  },
+  "hygiene": {
+    "clean": "No hygiene findings."
+  },
+  "severity": {
+    "fix": "Fix",
+    "tidy": "Tidy",
+    "note": "Note",
+    "info": "Info"
+  },
+  "check": {
+    "floating-tag": "Floating tag",
+    "no-tag": "No tag",
+    "stale-vendored-chart": "Vendored chart older than Chart.yaml",
+    "unpinned-chart": "Chart dependency with no version",
+    "chart-range": "Version range instead of a pin",
+    "appversion-drift": "appVersion disagrees with the image tag",
+    "renovate-hint": "Renovate hint names the wrong image",
+    "not-a-workload": "Not a workload"
   }
 }
