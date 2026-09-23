@@ -3,21 +3,34 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import AppsTable from './components/AppsTable'
-import Header from './components/Header'
-import Hygiene from './components/Hygiene'
+import AppDetail from './components/AppDetail'
+import HygieneTab from './components/HygieneTab'
+import PRPreview from './components/PRPreview'
+import ScansTab from './components/ScansTab'
+import Summary from './components/Summary'
+import TopBar from './components/TopBar'
+import UpdatesTable from './components/UpdatesTable'
 import { useScan } from './hooks/useScan'
 import { getJSON, type Status } from './lib/api'
+import { BUMPS, canBump, hygieneGroups, rank, toRow, type Bump, type Row } from './lib/model'
 
-type Tab = 'apps' | 'hygiene'
+type Tab = 'updates' | 'hygiene' | 'scans'
+type Filter = 'updates' | 'all' | Bump
+type View = { kind: 'none' } | { kind: 'app'; key: string } | { kind: 'pr' }
 
 export default function App() {
   const { t } = useTranslation()
   const [status, setStatus] = useState<Status | null>(null)
   const [statusError, setStatusError] = useState<string | null>(null)
   const { scan, error: scanError, start } = useScan()
-  const [tab, setTab] = useState<Tab>('apps')
+
+  const [tab, setTab] = useState<Tab>('updates')
+  const [filter, setFilter] = useState<Filter>('updates')
+  const [ns, setNs] = useState('')
   const [query, setQuery] = useState('')
+  const [picked, setPicked] = useState<Set<string>>(new Set())
+  const [view, setView] = useState<View>({ kind: 'none' })
+  const [splitMajors, setSplitMajors] = useState(true)
 
   useEffect(() => {
     const ctrl = new AbortController()
@@ -27,98 +40,194 @@ export default function App() {
         if (!ctrl.signal.aborted) setStatusError(e instanceof Error ? e.message : String(e))
       })
     return () => ctrl.abort()
-  }, [])
+  }, [scan?.history.length])
 
-  const apps = useMemo(() => scan?.apps ?? [], [scan])
+  const rows = useMemo(() => (scan?.apps ?? []).map(toRow), [scan])
+  const byKey = useMemo(() => new Map(rows.map((r) => [r.key, r])), [rows])
+  const updates = rows.filter(canBump).length
+  const namespaces = useMemo(() => [...new Set(rows.map((r) => r.app.namespace))].sort(), [rows])
+  const findings = hygieneGroups(scan?.apps ?? []).length
+
   const shown = useMemo(() => {
     const q = query.trim().toLowerCase()
-    if (!q) return apps
-    return apps.filter((a) =>
-      [a.name, a.namespace, ...a.pins.map((p) => p.image ?? p.name)].some((s) => s.toLowerCase().includes(q)),
-    )
-  }, [apps, query])
-  const pinCount = apps.reduce((n, a) => n + a.pins.length, 0)
-  const findingCount = apps.reduce((n, a) => n + a.findings.length, 0)
-  const fixCount = apps.reduce((n, a) => n + a.findings.filter((f) => f.severity === 'fix').length, 0)
+    return rows
+      .filter((r) => {
+        if (filter === 'updates' && !canBump(r)) return false
+        if (filter !== 'updates' && filter !== 'all' && r.bump !== filter) return false
+        if (ns && r.app.namespace !== ns) return false
+        if (q && ![r.app.name, ...r.app.pins.map((p) => p.image ?? p.name)].some((s) => s.toLowerCase().includes(q))) return false
+        return true
+      })
+      .sort((a, b) => rank(a.bump) - rank(b.bump) || a.app.name.localeCompare(b.app.name))
+  }, [rows, filter, ns, query])
 
-  const tabClass = (active: boolean) =>
-    `-mb-px border-b-2 px-3.5 py-2.5 font-medium ${active ? 'border-accent text-ink' : 'border-transparent text-muted'}`
+  // Picks survive rescans only for apps that still have an update.
+  const pickedRows = [...picked].map((k) => byKey.get(k)).filter((r): r is Row => !!r && canBump(r))
+
+  const pickSet = (keys: string[], on: boolean) => {
+    const next = new Set(picked)
+    for (const k of keys) {
+      if (on) next.add(k)
+      else next.delete(k)
+    }
+    setPicked(next)
+    if (on && next.size > 0) setView({ kind: 'pr' })
+    else if (next.size === 0 && view.kind === 'pr') setView({ kind: 'none' })
+  }
+  const pickWhere = (pred: (r: Row) => boolean) => pickSet(rows.filter((r) => canBump(r) && pred(r)).map((r) => r.key), true)
+  const clear = () => {
+    setPicked(new Set())
+    setView({ kind: 'none' })
+  }
+
+  const drawerRow = view.kind === 'app' ? byKey.get(view.key) : undefined
+  const showPR = view.kind === 'pr' && pickedRows.length > 0
+  const drawerOpen = !!drawerRow || showPR
+  const onlyNs = ns || (shown.length > 0 && shown.every((r) => r.app.namespace === shown[0].app.namespace) ? shown[0].app.namespace : '')
+
+  const filters: { k: Filter; label: string; n: number }[] = [
+    { k: 'updates', label: t('filter.updates'), n: updates },
+    { k: 'all', label: t('filter.all'), n: rows.length },
+    ...BUMPS.map((b) => ({ k: b as Filter, label: t(`bump.${b}`), n: rows.filter((r) => r.bump === b).length })),
+  ]
 
   return (
-    <div className="mx-auto max-w-[1680px] px-4 pb-8">
-      <Header status={status} scan={scan} onScan={() => void start()} />
-      <main className="grid gap-4">
-        {(statusError || scanError) && (
-          <p role="alert" className="rounded-lg bg-major-bg px-4 py-3 text-major">
-            {t('status.unreachable', { error: statusError ?? scanError })}
-          </p>
-        )}
-        {status && status.problems.length > 0 && (
-          <section className="rounded-lg bg-minor-bg px-4 py-3">
-            <h2 className="font-cond text-base font-semibold">{t('status.setupTitle')}</h2>
-            <ul className="mt-1 list-disc pl-5 text-sm">
-              {status.problems.map((p) => (
-                <li key={p}>{p}</li>
-              ))}
-            </ul>
-          </section>
-        )}
-        {scan?.state === 'failed' && (
-          <p role="alert" className="rounded-lg bg-major-bg px-4 py-3 text-major">
-            {t('scan.failed', { error: scan.error })}
-          </p>
-        )}
-        {!status && !statusError && <p className="text-muted">{t('status.loading')}</p>}
+    <div className="wrap">
+      <TopBar status={status} scan={scan} onScan={() => void start()} />
 
-        {apps.length > 0 && (
-          <>
-            <section className="flex flex-wrap items-baseline gap-x-8 gap-y-2 rounded-[10px] border border-line bg-surface px-5 py-4">
-              <div className="font-cond text-[44px] leading-none font-semibold tabular-nums">
-                {apps.length}
-                <small className="mt-1.5 block font-sans text-xs font-medium tracking-[.06em] text-muted uppercase">
-                  {t('summary.apps')}
-                </small>
-              </div>
-              <p className="text-muted">{t('summary.detail', { pins: pinCount, findings: findingCount, fix: fixCount })}</p>
-              <p className="basis-full text-xs text-muted">{t('summary.noUpdatesYet')}</p>
-            </section>
+      {(statusError || scanError) && (
+        <div role="alert" className="banner bad">
+          {t('status.unreachable', { error: statusError ?? scanError })}
+        </div>
+      )}
+      {status && status.problems.length > 0 && (
+        <section className="banner warn">
+          <h2>{t('status.setupTitle')}</h2>
+          <ul>
+            {status.problems.map((p) => (
+              <li key={p}>{p}</li>
+            ))}
+          </ul>
+        </section>
+      )}
+      {scan?.state === 'failed' && (
+        <div role="alert" className="banner bad">
+          {t('status.scanFailed', { error: scan.error })}
+        </div>
+      )}
+      {!status && !statusError && <p className="muted">{t('status.loading')}</p>}
+      {status && rows.length === 0 && <p className="empty">{scan?.state === 'running' ? t('status.firstScan') : t('status.noScans')}</p>}
 
-            <nav className="flex gap-1 border-b border-line" role="tablist">
-              <button type="button" role="tab" aria-selected={tab === 'apps'} className={tabClass(tab === 'apps')} onClick={() => setTab('apps')}>
-                {t('tabs.apps')}
-                <span className="ml-1.5 rounded-full bg-sunk px-1.5 font-mono text-[11px]">{apps.length}</span>
-              </button>
-              <button type="button" role="tab" aria-selected={tab === 'hygiene'} className={tabClass(tab === 'hygiene')} onClick={() => setTab('hygiene')}>
-                {t('tabs.hygiene')}
-                <span className="ml-1.5 rounded-full bg-sunk px-1.5 font-mono text-[11px]">{findingCount}</span>
-              </button>
-            </nav>
+      {rows.length > 0 && (
+        <>
+          <Summary rows={rows} updates={updates} />
 
-            {tab === 'apps' ? (
-              <>
-                <input
-                  id="filter"
-                  type="search"
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  placeholder={t('apps.filter')}
-                  aria-label={t('apps.filter')}
-                  className="w-full max-w-xs rounded-md border border-line bg-surface px-2.5 py-1.5 text-[13px]"
+          <nav className="tabs" role="tablist">
+            <button className="tab" role="tab" type="button" aria-selected={tab === 'updates'} onClick={() => setTab('updates')}>
+              {t('tabs.updates')}
+              <span className="n">{updates}</span>
+            </button>
+            <button className="tab" role="tab" type="button" aria-selected={tab === 'hygiene'} onClick={() => setTab('hygiene')}>
+              {t('tabs.hygiene')}
+              <span className="n">{findings}</span>
+            </button>
+            <button className="tab" role="tab" type="button" aria-selected={tab === 'scans'} onClick={() => setTab('scans')}>
+              {t('tabs.scans')}
+            </button>
+          </nav>
+
+          {tab === 'updates' && (
+            <section className={`main ${drawerOpen ? '' : 'nodrawer'}`}>
+              <div>
+                <div className="tools">
+                  {filters.map((f) => (
+                    <button key={f.k} className="chip" type="button" aria-pressed={filter === f.k} onClick={() => setFilter(f.k)}>
+                      {f.label}
+                      <span className="c">{f.n}</span>
+                    </button>
+                  ))}
+                  <select className="search" id="nsSel" aria-label={t('filter.namespace')} value={ns} onChange={(e) => setNs(e.target.value)}>
+                    <option value="">{t('filter.allNamespaces')}</option>
+                    {namespaces.map((n) => (
+                      <option key={n}>{n}</option>
+                    ))}
+                  </select>
+                  <input className="search" id="q" type="search" placeholder={t('filter.search')} aria-label={t('filter.search')} value={query} onChange={(e) => setQuery(e.target.value)} />
+                </div>
+
+                <div className="selbar">
+                  <span className="quick">
+                    {t('select.label')}
+                    <button className="linkbtn" type="button" onClick={() => pickWhere((r) => r.bump === 'patch' || r.bump === 'rebuild')}>
+                      {t('select.patches')}
+                    </button>
+                    <button className="linkbtn" type="button" onClick={() => pickWhere((r) => r.bump !== 'major')}>
+                      {t('select.minorPatch')}
+                    </button>
+                    <button className="linkbtn" type="button" onClick={() => pickSet(shown.filter(canBump).map((r) => r.key), true)}>
+                      {t('select.shown')}
+                    </button>
+                    {onlyNs && (
+                      <button className="linkbtn" type="button" onClick={() => pickWhere((r) => r.app.namespace === onlyNs)}>
+                        {t('select.namespace', { name: onlyNs })}
+                      </button>
+                    )}
+                  </span>
+                  <span className="selcount">
+                    {pickedRows.length > 0 ? (
+                      <>
+                        <b>{pickedRows.length}</b> {t('select.inPR')}
+                        <button className="btn" type="button" onClick={() => setView({ kind: 'pr' })}>
+                          {t('select.review')}
+                        </button>
+                        <button className="btn ghost" type="button" onClick={clear}>
+                          {t('select.clear')}
+                        </button>
+                      </>
+                    ) : (
+                      t('select.hint')
+                    )}
+                  </span>
+                </div>
+
+                <UpdatesTable
+                  rows={shown}
+                  picked={picked}
+                  highlighted={(r) => (view.kind === 'app' ? view.key === r.key : showPR && picked.has(r.key))}
+                  onOpen={(key) => setView({ kind: 'app', key })}
+                  onPick={(key, on) => pickSet([key], on)}
+                  onPickAll={(on) => pickSet(shown.filter(canBump).map((r) => r.key), on)}
                 />
-                <AppsTable apps={shown} />
-              </>
-            ) : (
-              <Hygiene apps={apps} />
-            )}
-          </>
-        )}
-        {status && apps.length === 0 && scan?.state !== 'running' && scan?.state !== 'failed' && (
-          <p className="rounded-[10px] border border-line bg-surface px-5 py-4 text-muted">{t('scan.emptyPrompt')}</p>
-        )}
-        {apps.length === 0 && scan?.state === 'running' && (
-          <p className="rounded-[10px] border border-line bg-surface px-5 py-4 text-muted">{t('scan.firstRunning')}</p>
-        )}
-      </main>
+              </div>
+
+              {drawerOpen && (
+                <aside className="drawer" aria-label={showPR ? t('pr.one') : t('detail.label')}>
+                  {showPR ? (
+                    <PRPreview
+                      rows={pickedRows}
+                      splitMajors={splitMajors}
+                      onSplitMajors={setSplitMajors}
+                      onRemove={(key) => pickSet([key], false)}
+                      onClear={clear}
+                    />
+                  ) : (
+                    drawerRow && (
+                      <AppDetail
+                        row={drawerRow}
+                        inPR={picked.has(drawerRow.key)}
+                        onAdd={() => pickSet([drawerRow.key], true)}
+                        onClose={() => setView(pickedRows.length > 0 ? { kind: 'pr' } : { kind: 'none' })}
+                      />
+                    )
+                  )}
+                </aside>
+              )}
+            </section>
+          )}
+          {tab === 'hygiene' && <HygieneTab apps={scan?.apps ?? []} />}
+          {tab === 'scans' && <ScansTab status={status} scan={scan} />}
+        </>
+      )}
     </div>
   )
 }

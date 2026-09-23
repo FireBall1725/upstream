@@ -7,10 +7,12 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"time"
 
 	"github.com/fireball1725/upstream/internal/config"
 	"github.com/fireball1725/upstream/internal/scan"
 	"github.com/fireball1725/upstream/internal/version"
+	"github.com/robfig/cron/v3"
 )
 
 type handlers struct {
@@ -23,12 +25,16 @@ type errorResponse struct {
 }
 
 type statusResponse struct {
-	Version  string   `json:"version"`
-	Repo     string   `json:"repo"`
-	Branch   string   `json:"branch"`
-	AppGlob  string   `json:"appGlob"`
-	Schedule string   `json:"schedule"`
-	Problems []string `json:"problems"`
+	Version   string     `json:"version"`
+	Repo      string     `json:"repo"`
+	Branch    string     `json:"branch"`
+	AppGlob   string     `json:"appGlob"`
+	Schedule  string     `json:"schedule"`
+	NextScan  *time.Time `json:"nextScan,omitempty"`
+	TimeZone  string     `json:"timeZone"`
+	HasToken  bool       `json:"hasToken"`
+	GitAuthor string     `json:"gitAuthor,omitempty"`
+	Problems  []string   `json:"problems"`
 }
 
 func (h *handlers) health(w http.ResponseWriter, _ *http.Request) {
@@ -40,14 +46,22 @@ func (h *handlers) status(w http.ResponseWriter, _ *http.Request) {
 	for _, p := range h.cfg.Problems() {
 		problems = append(problems, p.Error())
 	}
-	writeJSON(w, http.StatusOK, statusResponse{
-		Version:  version.String(),
-		Repo:     h.cfg.Repo,
-		Branch:   h.cfg.Branch,
-		AppGlob:  h.cfg.AppGlob,
-		Schedule: h.cfg.Schedule,
-		Problems: problems,
-	})
+	res := statusResponse{
+		Version:   version.String(),
+		Repo:      h.cfg.Repo,
+		Branch:    h.cfg.Branch,
+		AppGlob:   h.cfg.AppGlob,
+		Schedule:  h.cfg.Schedule,
+		TimeZone:  time.Local.String(),
+		HasToken:  h.cfg.GitHubToken != "",
+		GitAuthor: h.cfg.GitAuthorName,
+		Problems:  problems,
+	}
+	if sched, err := cron.ParseStandard(h.cfg.Schedule); err == nil && h.cfg.Repo != "" {
+		next := sched.Next(time.Now())
+		res.NextScan = &next
+	}
+	writeJSON(w, http.StatusOK, res)
 }
 
 func (h *handlers) latestScan(w http.ResponseWriter, _ *http.Request) {
