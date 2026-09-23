@@ -5,6 +5,7 @@ package inventory
 
 import (
 	"bufio"
+	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -32,22 +33,30 @@ func readManifests(dir, rel string) ([]Pin, error) {
 		defer func() { _ = f.Close() }()
 
 		sub, _ := filepath.Rel(dir, path)
+		sub = filepath.ToSlash(sub)
+		n := 0
 		sc := bufio.NewScanner(f)
 		sc.Buffer(make([]byte, 64*1024), 1<<20)
-		for n := 1; sc.Scan(); n++ {
+		for line := 1; sc.Scan(); line++ {
 			m := imageLine.FindStringSubmatch(sc.Text())
 			if m == nil {
 				continue
 			}
 			repo, tag := splitRef(m[1])
+			n++
+			// Field names each image by file and position, so two in one app stay distinct.
+			field := sub + " image"
+			if n > 1 {
+				field = fmt.Sprintf("%s image[%d]", sub, n)
+			}
 			pins = append(pins, Pin{
 				Kind:    KindImage,
 				Name:    "image",
 				Image:   repo,
 				Version: tag,
-				File:    rel + "/" + filepath.ToSlash(sub),
-				Line:    n,
-				Field:   "image",
+				File:    rel + "/" + sub,
+				Line:    line,
+				Field:   field,
 			})
 		}
 		return sc.Err()

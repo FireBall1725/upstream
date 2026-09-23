@@ -2,9 +2,10 @@
 // Copyright (C) 2026 FireBall1725
 
 import { useTranslation } from 'react-i18next'
-import { formatTime, type ScanResult, type Status } from '../lib/api'
+import { formatTime, type PullRequest, type ScanResult, type Status } from '../lib/api'
+import PRLog from './PRLog'
 
-export default function ScansTab({ status, scan }: { status: Status | null; scan: ScanResult | null }) {
+export default function ScansTab({ status, scan, prs }: { status: Status | null; scan: ScanResult | null; prs: PullRequest[] }) {
   const { t } = useTranslation()
   if (!status) return null
   const history = scan?.history ?? []
@@ -43,6 +44,10 @@ export default function ScansTab({ status, scan }: { status: Status | null; scan
         </dl>
       </div>
       <div className="panel wide">
+        <h3>{t('scans.prs')}</h3>
+        <PRLog prs={prs} />
+      </div>
+      <div className="panel wide">
         <h3>{t('scans.history')}</h3>
         <div className="tablebox" style={{ border: 0 }}>
           <table className="hist">
@@ -71,7 +76,7 @@ export default function ScansTab({ status, scan }: { status: Status | null; scan
               ))}
               <tr>
                 <td colSpan={7} className="muted">
-                  {history.length === 0 ? t('scans.noneYet') : t('scans.memoryOnly')}
+                  {history.length === 0 ? t('scans.noneYet') : t('scans.kept')}
                 </td>
               </tr>
             </tbody>

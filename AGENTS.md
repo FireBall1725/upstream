@@ -13,7 +13,9 @@ A self-hosted update tracker for GitOps repos. One Go binary (stdlib `net/http`,
 - `internal/inventory/` walks the app glob and records every pinned version with its file and line, plus the hygiene findings. It reads vendored `charts/*.tgz`, because that is what Helm renders, not what `Chart.yaml` declares.
 - `internal/versions/` decides whether a tag is a newer release of the same thing: same shape (prefix, number count, suffix, calver or not), same channel, linuxserver `-lsNN` as a build number.
 - `internal/sources/` lists image tags (go-containerregistry, anonymous) and Helm chart versions (index.yaml read line by line, or OCI tags), once per source per scan.
-- `internal/scan/` keeps a shallow clone under the data dir, runs one scan at a time and holds the last result in memory until SQLite lands.
+- `internal/scan/` keeps a shallow clone under the data dir, runs one scan at a time, stores every result, and retries without the token if GitHub rejects it.
+- `internal/bump/` opens bump PRs one at a time: a fresh clone per PR, line-anchored edits (`edit.go`), `helm dependency update` for charts, then `verify` re-reads the clone and renders every touched chart before anything is pushed. `bump_test.go` runs the whole flow against a local bare repo and a fake GitHub.
+- `internal/db/` opens SQLite and runs the migrations in `internal/db/migrations/`; `internal/repository/` holds all the SQL; `internal/models/` the shared types.
 - `internal/api/router.go` lists every route, one line each. Handlers decode, call one thing and respond.
 - `internal/ui/` embeds `dist/`. The `.gitkeep` there lets a Go-only build compile; the Vite config writes it back after every build.
 - `web/` is the React 19, TypeScript, Vite and Tailwind v4 client. Its `go.mod` exists only to keep `go build ./...` out of `node_modules`.

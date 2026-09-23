@@ -6,12 +6,19 @@ import { useTranslation } from 'react-i18next'
 import { filesFor, joinAnd, rank, titleFor, updatesOf, type Row } from '../lib/model'
 import BumpPill from './BumpPill'
 
+export interface PRGroup {
+  title: string
+  apps: string[]
+}
+
 interface Props {
   rows: Row[]
   splitMajors: boolean
+  ready: boolean
   onSplitMajors: (on: boolean) => void
   onRemove: (key: string) => void
   onClear: () => void
+  onOpen: (groups: PRGroup[], autoMerge: boolean) => Promise<void>
 }
 
 function today(): string {
@@ -20,9 +27,12 @@ function today(): string {
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`
 }
 
-export default function PRPreview({ rows, splitMajors, onSplitMajors, onRemove, onClear }: Props) {
+export default function PRPreview({ rows, splitMajors, ready, onSplitMajors, onRemove, onClear, onOpen }: Props) {
   const { t } = useTranslation()
   const [autoMerge, setAutoMerge] = useState(false)
+  const [title, setTitle] = useState<string | null>(null)
+  const [sending, setSending] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const list = [...rows].sort((a, b) => rank(a.bump) - rank(b.bump) || a.app.name.localeCompare(b.app.name))
   const majors = list.filter((r) => r.bump === 'major')
   const rest = list.filter((r) => r.bump !== 'major')
@@ -40,7 +50,13 @@ export default function PRPreview({ rows, splitMajors, onSplitMajors, onRemove, 
       </div>
       <div className="dsec">
         <h3>{t('pr.title')}</h3>
-        <input className="prtitle" id="prTitle" key={titleFor(groups[0])} defaultValue={titleFor(groups[0])} aria-label={t('pr.title')} />
+        <input
+          className="prtitle"
+          id="prTitle"
+          value={title ?? titleFor(groups[0])}
+          onChange={(e) => setTitle(e.target.value)}
+          aria-label={t('pr.title')}
+        />
         <p className="muted" style={{ margin: '8px 0 0', fontSize: 12 }}>
           {t('pr.branch')} <span className="path">{`upstream/${today()}-${list.length}-apps`}</span> {t('pr.into')} <span className="path">main</span>.{' '}
           {t('pr.body')}
@@ -107,17 +123,35 @@ export default function PRPreview({ rows, splitMajors, onSplitMajors, onRemove, 
           </span>
         </label>
         <div className="actions">
-          <button className="btn" type="button" disabled title={t('pr.notYet')}>
-            {groups.length === 1 ? t('pr.open') : t('pr.openMany', { count: groups.length })}
-            <span className="later">{t('later')}</span>
+          <button
+            className="btn"
+            type="button"
+            disabled={!ready || sending}
+            onClick={() => {
+              setSending(true)
+              setError(null)
+              const payload = groups.map((g, i) => ({ title: i === 0 ? (title ?? titleFor(g)).trim() || titleFor(g) : titleFor(g), apps: g.map((r) => r.app.dir) }))
+              onOpen(payload, autoMerge)
+                .catch((e: unknown) => setError(e instanceof Error ? e.message : String(e)))
+                .finally(() => setSending(false))
+            }}
+          >
+            {sending ? t('pr.sending') : groups.length === 1 ? t('pr.open') : t('pr.openMany', { count: groups.length })}
           </button>
-          <button className="btn ghost" type="button" onClick={onClear}>
+          <button className="btn ghost" type="button" onClick={onClear} disabled={sending}>
             {t('pr.clear')}
           </button>
         </div>
-        <p className="muted" style={{ margin: '10px 0 0', fontSize: 12 }}>
-          {t('pr.notYet')}
-        </p>
+        {!ready && (
+          <p className="muted" style={{ margin: '10px 0 0', fontSize: 12 }}>
+            {t('pr.notReady')}
+          </p>
+        )}
+        {error && (
+          <p role="alert" className="callout warn" style={{ margin: '10px 0 0' }}>
+            {error}
+          </p>
+        )}
       </div>
     </>
   )

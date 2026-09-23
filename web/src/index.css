@@ -220,3 +220,6 @@ dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
 @media (prefers-reduced-motion: no-preference) {
   tbody tr td { transition: background .12s; }
 }
+
+.prchip { font: 500 10px var(--font-mono); background: var(--color-patch-bg); color: var(--color-patch); border-radius: 3px; padding: 1px 5px; margin-left: 6px; white-space: nowrap; }
+a.linkbtn { display: inline-block; }

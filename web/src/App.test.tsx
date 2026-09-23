@@ -17,6 +17,7 @@ const status: Status = {
   timeZone: 'America/Toronto',
   hasToken: true,
   gitAuthor: 'FireBall1725',
+  prsReady: true,
   problems: [],
 }
 
@@ -54,12 +55,13 @@ const scanned: ScanResult = {
   ],
 }
 
-function mockFetch(routes: Record<string, () => Response>) {
+function mockFetch(routes: Record<string, (init?: RequestInit) => Response>) {
+  const all: Record<string, (init?: RequestInit) => Response> = { 'GET /api/prs': json([]), 'GET /api/skips': json([]), ...routes }
   return vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
     const key = `${init?.method ?? 'GET'} ${String(input)}`
-    const route = routes[key]
+    const route = all[key]
     if (!route) throw new Error(`unexpected ${key}`)
-    return route()
+    return route(init)
   })
 }
 const json = (body: unknown, code = 200) => () => new Response(JSON.stringify(body), { status: code })
@@ -119,11 +121,60 @@ describe('App', () => {
     expect(within(panel).getByLabelText('Title')).toHaveValue('Bump radarr and sonarr')
     expect(within(panel).getByText(/sabnzbd on its own/)).toBeInTheDocument()
     expect(within(panel).getByRole('checkbox', { name: /Auto-merge/ })).not.toBeChecked()
-    expect(within(panel).getByRole('button', { name: /Open 2 PRs/ })).toBeDisabled()
+    expect(within(panel).getByRole('button', { name: /Open 2 PRs/ })).toBeEnabled()
 
     fireEvent.click(within(panel).getByRole('checkbox', { name: /Give each major its own PR/ }))
     expect(within(panel).getByRole('heading', { name: 'New pull request' })).toBeInTheDocument()
     expect(within(panel).getByLabelText('Title')).toHaveValue('Bump radarr, sabnzbd and sonarr')
+  })
+
+  it('opens one PR per group with its own title', async () => {
+    const posted: { title: string; apps: string[]; autoMerge: boolean }[] = []
+    let nextId = 1
+    mockFetch({
+      'GET /api/status': json(status),
+      'GET /api/scan': json(scanned),
+      'POST /api/prs': (init) => {
+        const body = JSON.parse(String(init?.body))
+        posted.push(body)
+        return new Response(JSON.stringify({ id: nextId++, title: body.title, state: 'queued', items: [], createdAt: '2026-09-23T02:00:00Z', updatedAt: '', branch: 'b', autoMerge: body.autoMerge }), { status: 202 })
+      },
+    })
+    render(<App />)
+    await screen.findByText('sabnzbd')
+    fireEvent.click(screen.getByRole('button', { name: 'all of app-media' }))
+    const panel = screen.getByRole('complementary')
+    fireEvent.change(within(panel).getByLabelText('Title'), { target: { value: 'media: patch and minor' } })
+    fireEvent.click(within(panel).getByRole('checkbox', { name: /Auto-merge/ }))
+    fireEvent.click(within(panel).getByRole('button', { name: /Open 2 PRs/ }))
+    expect(await screen.findByRole('complementary', { name: 'Pull requests' })).toBeInTheDocument()
+    expect(posted).toEqual([
+      { title: 'media: patch and minor', autoMerge: true, apps: ['apps/app-media/radarr', 'apps/app-media/sonarr'] },
+      { title: 'sabnzbd: 4.5.5 -> 5.1.3', autoMerge: true, apps: ['apps/app-media/sabnzbd'] },
+    ])
+  })
+
+  it('shows why a PR request was refused', async () => {
+    mockFetch({
+      'GET /api/status': json(status),
+      'GET /api/scan': json(scanned),
+      'POST /api/prs': json({ error: 'none of those apps has an update in the latest scan' }, 409),
+    })
+    render(<App />)
+    fireEvent.click(await screen.findByText('radarr'))
+    fireEvent.click(screen.getByRole('button', { name: 'Add to PR' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Open PR' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent('none of those apps')
+  })
+
+  it('skips a version from the side panel', async () => {
+    const spy = mockFetch({ 'GET /api/status': json(status), 'GET /api/scan': json(scanned), 'POST /api/skips': json({}, 201) })
+    render(<App />)
+    fireEvent.click(await screen.findByText('radarr'))
+    fireEvent.click(screen.getByRole('button', { name: 'Skip 6.4.4' }))
+    await vi.waitFor(() =>
+      expect(spy).toHaveBeenCalledWith('/api/skips', expect.objectContaining({ method: 'POST', body: JSON.stringify({ appDir: 'apps/app-media/radarr', field: 'image.tag', version: '6.4.4' }) })),
+    )
   })
 
   it('groups hygiene findings and lists scan history', async () => {

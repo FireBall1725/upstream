@@ -40,5 +40,5 @@ export function useScan() {
     }
   }, [])
 
-  return { scan, error, start }
+  return { scan, error, start, reload: load }
 }

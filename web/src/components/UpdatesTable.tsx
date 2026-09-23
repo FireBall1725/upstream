@@ -7,6 +7,7 @@ import BumpPill from './BumpPill'
 
 interface Props {
   rows: Row[]
+  openPR: Map<string, { number?: number; url?: string }>
   picked: Set<string>
   highlighted: (r: Row) => boolean
   onOpen: (key: string) => void
@@ -14,7 +15,7 @@ interface Props {
   onPickAll: (on: boolean) => void
 }
 
-export default function UpdatesTable({ rows, picked, highlighted, onOpen, onPick, onPickAll }: Props) {
+export default function UpdatesTable({ rows, openPR, picked, highlighted, onOpen, onPick, onPickAll }: Props) {
   const { t } = useTranslation()
   const bumpable = rows.filter(canBump)
   const all = bumpable.length > 0 && bumpable.every((r) => picked.has(r.key))
@@ -80,6 +81,9 @@ export default function UpdatesTable({ rows, picked, highlighted, onOpen, onPick
                 </td>
                 <td className="app">
                   <b>{r.app.name}</b>
+                  {openPR.has(r.key) && (
+                    <span className="prchip">{openPR.get(r.key)?.number ? t('table.prOpen', { number: openPR.get(r.key)?.number }) : t('table.prPending')}</span>
+                  )}
                   <span className="ns">{r.app.namespace}</span>
                 </td>
                 <td className="kind hide-sm">

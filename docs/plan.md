@@ -133,11 +133,11 @@ Each step is its own PR in the new repo and ends with something that runs.
 1. **Scaffold.** Repo, CI, Dockerfile, version package, Vite app embedded in the binary. Done when `docker run` serves a blank page with the right version in it.
 2. **Inventory and hygiene.** Done 2026-09-23, with a "Scan now" button and the cron schedule pulled forward; results live in memory until step 4 adds SQLite. Tested against a snapshot of homelab-applications at `f64f9b5`. Done when it finds 58 apps and the same pins and hygiene items the mockup shows.
 3. **Version rules.** Done 2026-09-23. Table tests built from every trap in the list above. Done when the tautulli, open-webui, lidarr, nightly and beta cases all resolve correctly.
-4. **Sources, scan, storage, schedule, API.** Done 2026-09-23 except SQLite; results and history are in memory. Registries are always listed in full rather than switching to GitHub releases above 5,000 tags, because linuxserver apps need their `-lsNN` tags (radarr has 15,824) and a full scan still takes about 4 seconds. HTTP clients tested against recorded responses. Done when a live scan agrees with the 2026-09-22 probe, apart from releases that came out since.
-5. **UI.** Done 2026-09-23, ported from the mockup; the Open PR button is disabled until step 6. The mockup rebuilt in React against the real API.
-6. **Bump PRs.** Edit engine, helm step, verification, GitHub PR, auto-merge checkbox. Tested on a local bare clone first. The first live PR is one patch (spoolman 0.26.0 to 0.26.1) for you to review.
+4. **Sources, scan, storage, schedule, API.** Done 2026-09-23, SQLite included. Registries are always listed in full rather than switching to GitHub releases above 5,000 tags, because linuxserver apps need their `-lsNN` tags (radarr has 15,824) and a full scan still takes about 4 seconds. HTTP clients tested against recorded responses. Done when a live scan agrees with the 2026-09-22 probe, apart from releases that came out since.
+5. **UI.** Done 2026-09-23, ported from the mockup. The mockup rebuilt in React against the real API.
+6. **Bump PRs.** Done 2026-09-23, with Skip this version and a PR log. Edit engine, helm step, verification, GitHub PR, auto-merge checkbox. Tested on a local bare clone first. The first live PR is one patch (spoolman 0.26.0 to 0.26.1) for you to review.
 7. **Deploy.** Chart, SealedSecret and ingress in homelab-applications, then the first rc. One rc a day at most.
-8. **Later.** Alert rules on `/metrics`, Discord or Home Assistant notices, and per-app rule editing beyond the basics.
+8. **Later.** `/metrics` is done. Still open: Alert rules on `/metrics`, Discord or Home Assistant notices, and per-app rule editing beyond the basics.
 
 Nothing gets pushed Monday to Friday between 07:30 and 17:00 ET. Work done in that window stays as local commits until 17:00.
 
