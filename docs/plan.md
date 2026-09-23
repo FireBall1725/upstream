@@ -137,7 +137,7 @@ Each step is its own PR in the new repo and ends with something that runs.
 5. **UI.** Done 2026-09-23, ported from the mockup. The mockup rebuilt in React against the real API.
 6. **Bump PRs.** Done 2026-09-23, with Skip this version and a PR log. Edit engine, helm step, verification, GitHub PR, auto-merge checkbox. Tested on a local bare clone first. The first live PR is one patch (spoolman 0.26.0 to 0.26.1) for you to review.
 7. **Deploy.** Done 2026-09-23 on pinned nightlies, with a ServiceMonitor and two alert rules (scans failing, scans stale). No rc or stable release cut yet, since that also posts to Discord. First real PRs through the app: spoolman (#213), basic-memory-viewer, ollama-admin and sportarr batched with auto-merge (#214), and the headlamp chart 0.39.0 to 0.45.0 (#215), all rolled out healthy. Chart, SealedSecret and ingress in homelab-applications, then the first rc. One rc a day at most.
-8. **Later.** `/metrics` and the two alert rules are done. Still open: Alert rules on `/metrics`, Discord or Home Assistant notices, and per-app rule editing beyond the basics.
+8. **Later.** `/metrics` and the two alert rules are done. Still open: Discord or Home Assistant notices, and per-app rule editing beyond the basics.
 
 Nothing gets pushed Monday to Friday between 07:30 and 17:00 ET. Work done in that window stays as local commits until 17:00.
 
