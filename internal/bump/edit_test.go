@@ -136,3 +136,23 @@ func TestReplaceVersionMentions(t *testing.T) {
 		t.Errorf("sentence-ending full stop: %s", got)
 	}
 }
+
+func TestREADMERowsWhenChartAndAppVersionMatch(t *testing.T) {
+	// radarr before #221: chart and app were both 6.0.4.
+	in := "| **Chart Version** | `6.0.4` |\n| **App Version** | `6.0.4` |\n"
+	got := ReplaceVersionMentions(in, "6.0.4", "6.4.4", "lscr.io/linuxserver/radarr")
+	got = SetAppVersionRow(got, "6.4.4")
+	got = ReplaceChartVersionRow(got, "6.0.4", "6.0.5")
+	if want := "| **Chart Version** | `6.0.5` |\n| **App Version** | `6.4.4` |\n"; got != want {
+		t.Errorf("got\n%s\nwant\n%s", got, want)
+	}
+}
+
+func TestSetAppVersionRowFixesDrift(t *testing.T) {
+	// sonarr's row said 4.0.16 while the chart said 4.0.17.2952-ls306.
+	in := "| **Helm Chart** | `common` |\n| **App Version** | `4.0.16` |\nApp Version `4.0.16` in prose stays.\n"
+	want := "| **Helm Chart** | `common` |\n| **App Version** | `4.0.20.3014-ls325` |\nApp Version `4.0.16` in prose stays.\n"
+	if got := SetAppVersionRow(in, "4.0.20.3014-ls325"); got != want {
+		t.Errorf("got\n%s\nwant\n%s", got, want)
+	}
+}

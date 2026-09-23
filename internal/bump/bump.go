@@ -407,7 +407,12 @@ func applyItem(dir string, it models.BumpItem, p inventory.Pin) error {
 
 	readme := filepath.Join(appDir, "README.md")
 	if raw, err := os.ReadFile(readme); err == nil {
-		if next := ReplaceVersionMentions(string(raw), it.From, it.To, p.Image); next != string(raw) {
+		next := ReplaceVersionMentions(string(raw), it.From, it.To, p.Image)
+		// The App Version row tracks appVersion, which only the top-level image moves.
+		if p.Field == "appVersion" || p.Field == "image.tag" {
+			next = SetAppVersionRow(next, it.To)
+		}
+		if next != string(raw) {
 			return os.WriteFile(readme, []byte(next), 0o644)
 		}
 	}
